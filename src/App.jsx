@@ -414,7 +414,6 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:'0.625rem' }}>
             {[
-              { v: Math.round(totalRaised).toLocaleString('da-DK') + ' DKK', l:'' },
               { v: String(uniqueDonors), l: uniqueDonors === 1 ? 'donor' : 'donors' },
               { v: String(unplayedSongs.length), l:'queued' },
             ].map(({ v, l }) => (
@@ -433,7 +432,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
         </Panel>
 
         {/* ── Body grid ── */}
-        <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) clamp(340px,40vw,480px)', gap:'1.25rem', minHeight:0 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) clamp(340px,40vw,480px)', gap:'1.75rem', minHeight:0 }}>
 
           {/* Leaderboard */}
           <Panel style={{ padding:'1.5rem', overflowY:'auto', display:'flex', flexDirection:'column' }}>
@@ -557,7 +556,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
           </Panel>
 
           {/* Right column */}
-          <div style={{ display:'flex', flexDirection:'column', gap:'1.1rem', minHeight:0, overflowY:'auto' }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:'1.6rem', minHeight:0, overflowY:'auto' }}>
 
             {/* Donate */}
             <Panel style={{ padding:'0.75rem 1.25rem 1.25rem' }}>
