@@ -70,17 +70,18 @@ function useTimeAgo(ts) {
 }
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
-function Avatar({ name, size = 40 }) {
+const HATS = ['🎩','🧢','👒','🎓','⛑️','🪖','🎭','🪅'];
+function Avatar({ name, size = 40, crown = false }) {
   const color = T.avatars[hashName(name) % T.avatars.length];
+  const hat   = crown ? '👑' : HATS[hashName(name) % HATS.length];
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       background: color + '28', border: `1.5px solid ${color}50`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700,
-      fontSize: size * 0.4, color: color + 'cc',
+      fontSize: size * 0.5,
     }}>
-      {name.charAt(0).toUpperCase()}
+      {hat}
     </div>
   );
 }
@@ -503,7 +504,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
                       {i + 1}
                     </div>
 
-                    <Avatar name={entry.name} size={isFirst ? 48 : isSecond || isThird ? 38 : 34}/>
+                    <Avatar name={entry.name} size={isFirst ? 48 : isSecond || isThird ? 38 : 34} crown={isFirst}/>
 
                     <div style={{ flex:1, minWidth:0 }}>
                       {isFirst && (
@@ -625,9 +626,9 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
             </Panel>
 
             {/* Donate */}
-            <Panel style={{ padding:'1.25rem' }}>
+            <Panel style={{ padding:'0.75rem 1.25rem 1.25rem' }}>
               <SectionLabel>DONATE &amp; GET YOUR SONG PLAYED</SectionLabel>
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.875rem' }}>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.75rem' }}>
                 <div style={{ background:'white', padding:10, borderRadius:12 }}>
                   <QRCodeSVG value={donateUrl} size={220} level="M"/>
                 </div>
@@ -638,7 +639,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
                   <div style={{ fontSize:'0.75rem', color:T.textSub, marginBottom:6 }}>
                     Scan to donate &amp; get your song played
                   </div>
-                  <div style={{ fontSize:'0.72rem', color:T.accent, marginBottom:8, lineHeight:1.4 }}>
+                  <div style={{ fontSize:'0.88rem', color:T.accent, marginBottom:8, lineHeight:1.4 }}>
                     Include a song you'd like to hear in your donation message — we'll queue it up!
                   </div>
                   {minDonation && (
