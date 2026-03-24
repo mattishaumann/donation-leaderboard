@@ -149,7 +149,7 @@ function Announcement({ donation, isTop, onDone }) {
   onDoneRef.current = onDone;
 
   useEffect(() => {
-    const holdMs = isTop ? 2600 : 1800;
+    const holdMs = isTop ? 5200 : 3600;
     const t1 = setTimeout(() => setOut(true), holdMs);
     const t2 = setTimeout(() => onDoneRef.current(), holdMs + 600);
     return () => { clearTimeout(t1); clearTimeout(t2); };
@@ -366,9 +366,13 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
   useEffect(() => {
     if (mode !== 'demo') return;
     const id = setInterval(() => {
-      setDonations(p => [...p, makeDemoDonation()]);
+      const double = Math.random() < 0.25;
+      setDonations(p => double
+        ? [...p, makeDemoDonation(), makeDemoDonation()]
+        : [...p, makeDemoDonation()]
+      );
       setLastUpdated(new Date().toISOString());
-    }, 9000);
+    }, 16000);
     return () => clearInterval(id);
   }, [mode, makeDemoDonation]);
 
