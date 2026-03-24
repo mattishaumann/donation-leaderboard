@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import Stripe from 'stripe';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -8,8 +9,76 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = 3000;
 
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
+
+// ── Stripe webhook — must be registered BEFORE express.json() ─────────────────
+// Stripe requires the raw request body to verify the webhook signature.
+app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!stripe) return res.status(500).json({ error: 'Stripe not configured' });
+
+  const sig     = req.headers['stripe-signature'];
+  const secret  = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+  try {
+    event = secret
+      ? stripe.webhooks.constructEvent(req.body, sig, secret)
+      : JSON.parse(req.body); // no secret = skip verification (dev only)
+  } catch (err) {
+    console.error('Stripe webhook error:', err.message);
+    return res.status(400).json({ error: err.message });
+  }
+
+  if (event.type !== 'checkout.session.completed') {
+    return res.json({ ok: true, skipped: true });
+  }
+
+  const session = event.data.object;
+
+  // Name: Stripe collects this if "Collect customer name" is enabled on the Payment Link
+  const name = session.customer_details?.name || 'Anonymous';
+
+  // Amount: Stripe gives smallest unit (øre for DKK), divide by 100
+  const currency    = (session.currency || 'dkk').toUpperCase();
+  const amount      = (session.amount_total || 0) / 100;
+  const amountDKK   = toDKK(amount, currency);
+
+  // Message / song request: pulled from Payment Link custom fields
+  // Field must be labelled anything — we just grab the first text field value
+  const customFields = session.custom_fields || [];
+  const messageField = customFields.find(f => f.type === 'text');
+  const message      = messageField?.text?.value || '';
+
+  const songInfo  = await extractSong(message);
+  const songLabel = songInfo ? `${songInfo.song}${songInfo.artist ? ` — ${songInfo.artist}` : ''}` : null;
+
+  donations.push({
+    id:         nextId++,
+    stripeId:   session.id,
+    name,
+    message,
+    song:       songLabel,
+    songHidden: songInfo?.hidden || false,
+    songPlayed: false,
+    amount,
+    currency,
+    amountDKK,
+    timestamp:  new Date().toISOString(),
+    isPublic:   true,
+  });
+
+  console.log(`[Stripe] ${name} — ${amount} ${currency} (${amountDKK} DKK)${songLabel ? ` | Song: ${songLabel}` : ''}${message ? ` | Msg: ${message}` : ''}`);
+
+  if (songInfo) {
+    queueSongOnSpotify(songInfo.song, songInfo.artist).catch(console.error);
+  }
+
+  res.json({ ok: true });
+});
+
 app.use(express.json());
 
 const donations = [];

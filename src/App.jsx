@@ -1,645 +1,493 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
-// --- Constants ---
+// ─── Constants ────────────────────────────────────────────────────────────────
 const RATES = { DKK: 1, EUR: 7.46, USD: 6.88, GBP: 8.68, SEK: 0.64, NOK: 0.64 };
-const HATS = ['party', 'tophat', 'cowboy', 'crown', 'beret', 'wizard'];
-const HAT_EMOJIS = ['🎩', '🤠', '👒', '🎓', '⛑️', '👑'];
-const FLOAT_HATS = ['🎩', '🤠', '👒', '🎓', '⛑️', '👑'];
-
 const DANISH_NAMES = [
-  'Lars', 'Mette', 'Søren', 'Camilla', 'Kasper', 'Ida', 'Nikolaj', 'Sofie',
-  'Rasmus', 'Freja', 'Mikkel', 'Astrid', 'Emil', 'Liv', 'Magnus', 'Clara',
-  'Jonas', 'Nanna', 'Viktor', 'Karla',
+  'Lars','Mette','Søren','Camilla','Kasper','Ida','Nikolaj','Sofie',
+  'Rasmus','Freja','Mikkel','Astrid','Emil','Liv','Magnus','Clara',
+  'Jonas','Nanna','Viktor','Karla',
 ];
 const DEMO_SONGS = [
-  'Bohemian Rhapsody', 'Dancing Queen — ABBA', 'Take On Me', 'Mr. Brightside',
-  'Smells Like Teen Spirit', 'Jolene', 'Billie Jean', 'Wonderwall',
-  'Sweet Caroline', 'Don\'t Stop Believin\'', 'Barbie Girl — Aqua', 'Livin\' on a Prayer',
-  'Africa — Toto', 'Never Gonna Give You Up', 'September — Earth Wind & Fire',
+  'Bohemian Rhapsody','Dancing Queen — ABBA','Take On Me','Mr. Brightside',
+  'Smells Like Teen Spirit','Jolene','Billie Jean','Wonderwall',
+  'Sweet Caroline',"Don't Stop Believin'",'Barbie Girl — Aqua',"Livin' on a Prayer",
+  'Africa — Toto','Never Gonna Give You Up','September — Earth Wind & Fire',
 ];
 const DEMO_MESSAGES = [
-  'Great party!', 'Love this event!', 'Keep it going!', 'Cheers! 🍻',
-  'Amazing night!', '', 'Best party ever!', 'Wooo!', 'Let\'s gooo!', '',
-  'This is awesome!', 'For the good vibes ✨', '',
+  'Great party!','Love this event!','Keep it going!','Cheers 🍻',
+  'Amazing night!','','Best party ever!','Wooo!',"Let's gooo!",'',
+  'This is awesome!','For the good vibes','',
 ];
-const CURRENCIES = ['DKK', 'EUR', 'USD', 'GBP', 'SEK'];
+const CURRENCIES = ['DKK','EUR','USD','GBP','SEK'];
+const KOFI_URL   = 'https://ko-fi.com/norrebros';
 
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const T = {
+  // Backgrounds
+  pageBg:     '#0a0805',
+  glass:      'rgba(6, 4, 2, 0.28)',
+  glassLight: 'rgba(6, 4, 2, 0.20)',
+  // Borders
+  border:     'rgba(255,255,255,0.14)',
+  borderHi:   'rgba(255,255,255,0.24)',
+  // Text
+  text:       '#f2ede4',
+  textSub:    'rgba(242,237,228,0.5)',
+  textMuted:  'rgba(242,237,228,0.22)',
+  // Accent — warm yellow, echoes the building
+  accent:     '#f0d44a',
+  accentBg:   'rgba(240,212,74,0.1)',
+  accentBorder:'rgba(240,212,74,0.28)',
+  // Avatar palette
+  avatars: ['#5b8fa8','#8a6ba8','#a86b6b','#6ba88a','#a89e6b','#6b7ea8','#a8816b','#7aa86b'],
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function hashName(name) {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0;
   return Math.abs(h);
 }
-
-function getHatIndex(name) {
-  return hashName(name) % HATS.length;
-}
-
 function toDKK(amount, currency) {
   return Math.round(parseFloat(amount) * (RATES[currency] || 1) * 100) / 100;
 }
+function fmtDKK(n) { return Math.round(n).toLocaleString('da-DK') + ' DKK'; }
 
-function extractSong(msg) {
-  if (!msg) return null;
-  const m = msg.trim();
-  const s1 = m.match(/^song:\s*(.+)/i);
-  if (s1) return s1[1].trim();
-  const s2 = m.match(/^play\s+(.+)/i);
-  if (s2) return s2[1].trim();
-  const s3 = m.match(/^[🎵🎶🎤🎸🎹🎺🎻🥁🎷]\s*(.+)/u);
-  if (s3) return s3[1].trim();
-  if (m.length < 80 && (m.includes(' — ') || m.includes(' - '))) return m;
-  return null;
+// ─── useTimeAgo ───────────────────────────────────────────────────────────────
+function useTimeAgo(ts) {
+  const [label, setLabel] = useState('');
+  useEffect(() => {
+    const upd = () => {
+      if (!ts) { setLabel(''); return; }
+      const s = Math.floor((Date.now() - new Date(ts)) / 1000);
+      if (s < 6)        setLabel('just now');
+      else if (s < 60)  setLabel(`${s}s ago`);
+      else              setLabel(`${Math.floor(s / 60)}m ago`);
+    };
+    upd();
+    const id = setInterval(upd, 5000);
+    return () => clearInterval(id);
+  }, [ts]);
+  return label;
 }
 
-// --- Hat SVGs ---
-function HatIcon({ name, size = 32 }) {
-  const idx = getHatIndex(name);
-  const colors = [
-    ['#FF6B6B', '#FF8E8E'], // party cone
-    ['#2D2D2D', '#4A4A4A'], // top hat
-    ['#C68B59', '#E8A86B'], // cowboy
-    ['#FFD700', '#FFC107'], // crown
-    ['#E74C3C', '#C0392B'], // beret
-    ['#7B68EE', '#9B8BFF'], // wizard
-  ];
-  const [c1, c2] = colors[idx];
-
-  const hats = [
-    // Party cone
-    <svg key="party" width={size} height={size} viewBox="0 0 40 40">
-      <polygon points="20,2 32,36 8,36" fill={c1} stroke={c2} strokeWidth="2"/>
-      <circle cx="20" cy="2" r="3" fill="#FFE66D"/>
-      <line x1="12" y1="22" x2="28" y2="22" stroke="#FFE66D" strokeWidth="2"/>
-      <line x1="10" y1="30" x2="30" y2="30" stroke="#FFB347" strokeWidth="2"/>
-    </svg>,
-    // Top hat
-    <svg key="tophat" width={size} height={size} viewBox="0 0 40 40">
-      <rect x="10" y="6" width="20" height="24" rx="2" fill={c1}/>
-      <rect x="4" y="28" width="32" height="6" rx="3" fill={c2}/>
-      <rect x="10" y="24" width="20" height="4" fill={c2}/>
-      <rect x="12" y="24" width="16" height="2" fill="#FFE66D"/>
-    </svg>,
-    // Cowboy
-    <svg key="cowboy" width={size} height={size} viewBox="0 0 40 40">
-      <ellipse cx="20" cy="32" rx="18" ry="5" fill={c1}/>
-      <path d="M12,32 Q12,12 20,10 Q28,12 28,32" fill={c2}/>
-      <ellipse cx="20" cy="32" rx="14" ry="3" fill={c1} stroke={c2} strokeWidth="1"/>
-      <rect x="12" y="26" width="16" height="3" fill="#FFE66D" rx="1"/>
-    </svg>,
-    // Crown
-    <svg key="crown" width={size} height={size} viewBox="0 0 40 40">
-      <path d="M6,32 L6,16 L14,24 L20,10 L26,24 L34,16 L34,32 Z" fill={c1} stroke={c2} strokeWidth="1.5"/>
-      <rect x="6" y="30" width="28" height="5" rx="2" fill={c2}/>
-      <circle cx="14" cy="33" r="2" fill="#E74C3C"/>
-      <circle cx="20" cy="33" r="2" fill="#3498DB"/>
-      <circle cx="26" cy="33" r="2" fill="#2ECC71"/>
-    </svg>,
-    // Beret
-    <svg key="beret" width={size} height={size} viewBox="0 0 40 40">
-      <ellipse cx="20" cy="28" rx="16" ry="6" fill={c1}/>
-      <path d="M8,28 Q6,18 20,14 Q34,18 32,28" fill={c2}/>
-      <circle cx="20" cy="14" r="3" fill={c1}/>
-    </svg>,
-    // Wizard
-    <svg key="wizard" width={size} height={size} viewBox="0 0 40 40">
-      <polygon points="20,2 34,36 6,36" fill={c1}/>
-      <polygon points="20,2 34,36 6,36" fill="none" stroke={c2} strokeWidth="1.5"/>
-      <circle cx="16" cy="20" r="2" fill="#FFE66D"/>
-      <circle cx="24" cy="26" r="1.5" fill="#FFE66D"/>
-      <circle cx="18" cy="30" r="1" fill="#FFB347"/>
-      <circle cx="22" cy="15" r="1.5" fill="#FFB347"/>
-      <rect x="4" y="34" width="32" height="4" rx="2" fill={c2}/>
-    </svg>,
-  ];
-  return hats[idx];
-}
-
-// --- Floating hats background ---
-function FloatingHats() {
-  const hats = useRef(
-    Array.from({ length: 12 }, (_, i) => ({
-      emoji: FLOAT_HATS[i % FLOAT_HATS.length],
-      left: Math.random() * 100,
-      delay: Math.random() * 20,
-      duration: 15 + Math.random() * 20,
-      size: 20 + Math.random() * 30,
-    }))
-  ).current;
-
+// ─── Avatar ───────────────────────────────────────────────────────────────────
+function Avatar({ name, size = 40 }) {
+  const color = T.avatars[hashName(name) % T.avatars.length];
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-      {hats.map((h, i) => (
-        <span
-          key={i}
-          className="absolute opacity-[0.06]"
-          style={{
-            left: `${h.left}%`,
-            fontSize: h.size,
-            animation: `floatHat ${h.duration}s ease-in-out ${h.delay}s infinite`,
-          }}
-        >
-          {h.emoji}
-        </span>
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      background: color + '28', border: `1.5px solid ${color}50`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700,
+      fontSize: size * 0.4, color: color + 'cc',
+    }}>
+      {name.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+// ─── Eq bars ─────────────────────────────────────────────────────────────────
+function EqBars({ active }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2.5, height: 14 }}>
+      {[1,2,3].map(i => (
+        <div key={i} style={{
+          width: 3, borderRadius: 2, background: T.accent,
+          animation: active ? `eq${i} ${0.65 + i * 0.18}s ease-in-out infinite alternate` : 'none',
+          height: active ? undefined : 4,
+        }}/>
       ))}
     </div>
   );
 }
 
-// --- Celebration overlay ---
-function Celebration({ name, total, onDone }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 3000);
-    return () => clearTimeout(t);
-  }, [onDone]);
-
+// ─── Panel wrapper ────────────────────────────────────────────────────────────
+function Panel({ children, style = {} }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80" style={{ animation: 'fadeIn 0.3s' }}>
-      <div className="text-center" style={{ animation: 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>
-        <div className="text-8xl mb-4">👑</div>
-        <h2 className="font-heading text-6xl font-black text-gold mb-4">{name}</h2>
-        <p className="text-3xl text-amber font-mono font-bold">{total.toLocaleString('da-DK')} DKK</p>
-        <p className="text-xl text-white/60 mt-4">New #1 Donor!</p>
+    <div style={{
+      background: T.glass,
+      backdropFilter: 'blur(40px)',
+      WebkitBackdropFilter: 'blur(40px)',
+      border: `1px solid ${T.border}`,
+      borderRadius: 14,
+      ...style,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function SectionLabel({ children }) {
+  return (
+    <div style={{ fontSize: '0.62rem', letterSpacing: '0.2em', color: T.textSub, marginBottom: '0.875rem', fontFamily: "'Space Grotesk', sans-serif" }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Celebration overlay ─────────────────────────────────────────────────────
+function Celebration({ name, total, onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:99, background:'rgba(10,8,5,0.92)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.35s' }}>
+      <div style={{ textAlign:'center', animation:'popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275)' }}>
+        <div style={{ fontSize:'0.7rem', letterSpacing:'0.24em', color:T.textSub, marginBottom:14 }}>NEW #1 DONOR</div>
+        <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(3.5rem,8vw,6rem)', color:T.accent, lineHeight:1, marginBottom:12 }}>{name}</div>
+        <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'1.6rem', color:T.text, opacity:0.85 }}>{fmtDKK(total)}</div>
       </div>
     </div>
   );
 }
 
-// --- Setup screen ---
+// ─── Setup screen ─────────────────────────────────────────────────────────────
 function SetupScreen({ onStart }) {
-  const [eventName, setEventName] = useState('Hat Party 2026');
-  const [mode, setMode] = useState('demo');
-  const [kofiUrl, setKofiUrl] = useState('');
-  const [minDonation, setMinDonation] = useState('20');
+  const [eventName,   setEventName]   = useState('Hat Party 2026');
+  const [mode,        setMode]        = useState('demo');
+  const [kofiUrl,     setKofiUrl]     = useState(KOFI_URL);
+  const [minDonation, setMinDonation] = useState('10');
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="bg-white/5 backdrop-blur rounded-2xl p-10 w-full max-w-md border border-white/10">
-        <h1 className="font-heading text-4xl font-black text-gold mb-2 text-center">
-          🎩 Donation Leaderboard
-        </h1>
-        <p className="text-white/50 text-center mb-8">Party fundraising on the big screen</p>
-
-        <label className="block text-sm text-white/60 mb-1">Event Name</label>
-        <input
-          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white mb-4 focus:outline-none focus:border-gold"
-          value={eventName}
-          onChange={(e) => setEventName(e.target.value)}
-        />
-
-        <label className="block text-sm text-white/60 mb-1">Ko-fi Donation URL</label>
-        <input
-          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white mb-4 focus:outline-none focus:border-gold placeholder-white/20"
-          placeholder="https://ko-fi.com/yourname"
-          value={kofiUrl}
-          onChange={(e) => setKofiUrl(e.target.value)}
-        />
-
-        <label className="block text-sm text-white/60 mb-1">Minimum Donation (DKK)</label>
-        <input
-          type="number"
-          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white mb-6 focus:outline-none focus:border-gold"
-          value={minDonation}
-          onChange={(e) => setMinDonation(e.target.value)}
-        />
-
-        <label className="block text-sm text-white/60 mb-2">Mode</label>
-        <div className="flex gap-3 mb-8">
-          <button
-            onClick={() => setMode('demo')}
-            className={`flex-1 py-3 rounded-lg font-semibold transition ${
-              mode === 'demo' ? 'bg-gold text-dark' : 'bg-white/10 text-white/60 hover:bg-white/20'
-            }`}
-          >
-            Demo Mode
-          </button>
-          <button
-            onClick={() => setMode('live')}
-            className={`flex-1 py-3 rounded-lg font-semibold transition ${
-              mode === 'live' ? 'bg-gold text-dark' : 'bg-white/10 text-white/60 hover:bg-white/20'
-            }`}
-          >
-            Live (Ko-fi)
-          </button>
+    <div style={{ minHeight:'100vh', background:T.pageBg, backgroundImage:'url(/bg.png)', backgroundSize:'cover', backgroundPosition:'center bottom', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ position:'fixed', inset:0, background:'rgba(10,8,5,0.82)' }}/>
+      <div style={{ position:'relative', zIndex:1, width:'100%', maxWidth:420, padding:'0 20px' }}>
+        <div style={{ marginBottom:'2rem' }}>
+          <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'2.8rem', color:T.accent, letterSpacing:'0.06em', lineHeight:1 }}>NØRREBROS</div>
+          <div style={{ fontFamily:"'Space Grotesk', sans-serif", fontWeight:600, fontSize:'1rem', color:T.textSub, letterSpacing:'0.05em', marginTop:4 }}>DONATION LEADERBOARD</div>
         </div>
 
-        <button
-          onClick={() => onStart(eventName, mode, kofiUrl, minDonation)}
-          className="w-full py-4 rounded-xl bg-gradient-to-r from-gold to-amber text-dark font-heading font-bold text-lg hover:scale-[1.02] transition-transform"
-        >
-          Launch Leaderboard
-        </button>
+        <Panel style={{ padding:'2rem' }}>
+          {[
+            { label:'Event name',         val:eventName,   set:setEventName,   type:'text',   ph:'' },
+            { label:'Ko-fi URL',          val:kofiUrl,     set:setKofiUrl,     type:'text',   ph:'https://ko-fi.com/yourname' },
+            { label:'Min. donation (DKK)',val:minDonation, set:setMinDonation, type:'number', ph:'' },
+          ].map(({ label, val, set, type, ph }) => (
+            <div key={label} style={{ marginBottom:'1rem' }}>
+              <div style={{ fontSize:'0.65rem', letterSpacing:'0.16em', color:T.textSub, marginBottom:5 }}>{label.toUpperCase()}</div>
+              <input type={type} value={val} placeholder={ph} onChange={e => set(e.target.value)} style={{ width:'100%', boxSizing:'border-box', background:'rgba(255,255,255,0.05)', border:`1px solid ${T.border}`, borderRadius:8, padding:'10px 13px', color:T.text, fontFamily:"'Space Grotesk', sans-serif", fontSize:'0.9rem', outline:'none' }}/>
+            </div>
+          ))}
+
+          <div style={{ marginBottom:'1.5rem' }}>
+            <div style={{ fontSize:'0.65rem', letterSpacing:'0.16em', color:T.textSub, marginBottom:7 }}>MODE</div>
+            <div style={{ display:'flex', gap:8 }}>
+              {['demo','live'].map(m => (
+                <button key={m} onClick={() => setMode(m)} style={{ flex:1, padding:'9px 0', borderRadius:8, border:`1px solid ${mode===m ? T.accent : T.border}`, background: mode===m ? T.accentBg : 'transparent', color: mode===m ? T.accent : T.textSub, fontFamily:"'Space Grotesk', sans-serif", fontWeight:600, fontSize:'0.82rem', cursor:'pointer', letterSpacing:'0.04em' }}>
+                  {m === 'demo' ? 'Demo' : 'Live (Ko-fi)'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button onClick={() => onStart(eventName, mode, kofiUrl, minDonation)} style={{ width:'100%', padding:'12px', borderRadius:10, background:T.accent, border:'none', cursor:'pointer', fontFamily:"'Space Grotesk', sans-serif", fontWeight:700, fontSize:'0.95rem', color:'#0a0805', letterSpacing:'0.04em' }}>
+            Launch →
+          </button>
+        </Panel>
       </div>
     </div>
   );
 }
 
-// --- Main Leaderboard ---
-function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
-  const [donations, setDonations] = useState([]);
-  const [celebration, setCelebration] = useState(null);
-  const prevTopRef = useRef(null);
-  const demoIdRef = useRef(100);
-  const demoIntervalRef = useRef(null);
-  const seededRef = useRef(false);
+// ─── Recent donation row ──────────────────────────────────────────────────────
+function RecentItem({ donation: d, fresh }) {
+  const ago = useTimeAgo(d.timestamp);
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.4rem 0.6rem', borderRadius:8, background: fresh ? T.accentBg : 'transparent', border:`1px solid ${fresh ? T.accentBorder : 'transparent'}`, animation:'fadeSlideIn 0.35s ease-out' }}>
+      <Avatar name={d.name} size={26}/>
+      <div style={{ flex:1, minWidth:0 }}>
+        <span style={{ fontWeight:600, fontSize:'0.82rem', color: fresh ? T.accent : T.text }}>{d.name}</span>
+        {d.song && <span style={{ fontSize:'0.7rem', color:T.textSub, marginLeft:6 }}>♫ {d.songHidden ? 'mystery song' : d.song}</span>}
+        {!d.song && d.message && <span style={{ fontSize:'0.7rem', color:T.textSub, marginLeft:6, fontStyle:'italic' }}>"{d.message}"</span>}
+      </div>
+      <div style={{ textAlign:'right', flexShrink:0 }}>
+        <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'0.8rem', color: fresh ? T.accent : T.text, whiteSpace:'nowrap' }}>{fmtDKK(d.amountDKK)}</div>
+        {ago && <div style={{ fontSize:'0.6rem', color:T.textMuted, marginTop:1 }}>{ago}</div>}
+      </div>
+    </div>
+  );
+}
 
-  // Generate demo donation
+// ─── Main dashboard ───────────────────────────────────────────────────────────
+function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
+  const [donations,    setDonations]    = useState([]);
+  const [celebration,  setCelebration]  = useState(null);
+  const [lastUpdated,  setLastUpdated]  = useState(null);
+  const [spotifyQueue, setSpotifyQueue] = useState({ connected:false, currently_playing:null, is_playing:false, queue:[] });
+
+  const prevTopRef  = useRef(null);
+  const demoIdRef   = useRef(100);
+  const seededRef   = useRef(false);
+
   const makeDemoDonation = useCallback(() => {
-    const name = DANISH_NAMES[Math.floor(Math.random() * DANISH_NAMES.length)];
+    const name     = DANISH_NAMES[Math.floor(Math.random() * DANISH_NAMES.length)];
     const currency = CURRENCIES[Math.floor(Math.random() * CURRENCIES.length)];
-    const baseAmount = 30 + Math.floor(Math.random() * 470);
-    const amount = currency === 'DKK' ? baseAmount : Math.round(baseAmount / (RATES[currency] || 1) * 100) / 100;
-    const hasSong = Math.random() < 0.4;
-    const song = hasSong ? DEMO_SONGS[Math.floor(Math.random() * DEMO_SONGS.length)] : null;
-    const message = song
+    const base     = 20 + Math.floor(Math.random() * 380);
+    const amount   = currency === 'DKK' ? base : Math.round(base / (RATES[currency] || 1) * 100) / 100;
+    const hasSong  = Math.random() < 0.4;
+    const song     = hasSong ? DEMO_SONGS[Math.floor(Math.random() * DEMO_SONGS.length)] : null;
+    const message  = song
       ? (Math.random() < 0.5 ? `Song: ${song}` : `🎵 ${song}`)
       : DEMO_MESSAGES[Math.floor(Math.random() * DEMO_MESSAGES.length)];
-
-    return {
-      id: demoIdRef.current++,
-      name,
-      message,
-      song,
-      songPlayed: false,
-      amount,
-      currency,
-      amountDKK: toDKK(amount, currency),
-      timestamp: new Date().toISOString(),
-      isPublic: true,
-    };
+    return { id:demoIdRef.current++, name, message, song, songPlayed:false, songHidden:false, amount, currency, amountDKK:toDKK(amount,currency), timestamp:new Date().toISOString(), isPublic:true };
   }, []);
 
-  // Seed demo
   useEffect(() => {
     if (mode !== 'demo' || seededRef.current) return;
     seededRef.current = true;
-    const seed = Array.from({ length: 16 }, () => makeDemoDonation());
-    setDonations(seed);
+    setDonations(Array.from({ length:14 }, () => makeDemoDonation()));
+    setLastUpdated(new Date().toISOString());
   }, [mode, makeDemoDonation]);
 
-  // Demo stream
   useEffect(() => {
     if (mode !== 'demo') return;
-    demoIntervalRef.current = setInterval(() => {
-      setDonations((prev) => [...prev, makeDemoDonation()]);
-    }, 3500);
-    return () => clearInterval(demoIntervalRef.current);
+    const id = setInterval(() => { setDonations(p => [...p, makeDemoDonation()]); setLastUpdated(new Date().toISOString()); }, 4000);
+    return () => clearInterval(id);
   }, [mode, makeDemoDonation]);
 
-  // Live polling
   useEffect(() => {
     if (mode !== 'live') return;
-    const poll = () => fetch('/api/donations').then((r) => r.json()).then(setDonations).catch(() => {});
-    poll();
-    const id = setInterval(poll, 3000);
-    return () => clearInterval(id);
+    const poll = () => fetch('/api/donations').then(r=>r.json()).then(d=>{ setDonations(d); setLastUpdated(new Date().toISOString()); }).catch(()=>{});
+    poll(); const id = setInterval(poll, 3000); return () => clearInterval(id);
   }, [mode]);
 
-  // Build leaderboard
+  useEffect(() => {
+    if (mode !== 'live') return;
+    const poll = () => fetch('/api/spotify/queue').then(r=>r.json()).then(setSpotifyQueue).catch(()=>{});
+    poll(); const id = setInterval(poll, 5000); return () => clearInterval(id);
+  }, [mode]);
+
+  // Derived data
   const grouped = {};
-  donations.forEach((d) => {
-    if (!grouped[d.name]) {
-      grouped[d.name] = { name: d.name, totalDKK: 0, count: 0, lastMessage: '', lastCurrency: d.currency, lastAmount: d.amount, donations: [] };
-    }
-    grouped[d.name].totalDKK += d.amountDKK;
+  donations.forEach(d => {
+    if (!grouped[d.name]) grouped[d.name] = { name:d.name, totalDKK:0, count:0, donations:[], lastSong:null };
+    grouped[d.name].totalDKK   += d.amountDKK;
     grouped[d.name].count++;
-    grouped[d.name].lastMessage = d.message || grouped[d.name].lastMessage;
-    grouped[d.name].lastCurrency = d.currency;
-    grouped[d.name].lastAmount = d.amount;
     grouped[d.name].donations.push(d);
+    if (d.song) grouped[d.name].lastSong = d;
   });
-  const leaderboard = Object.values(grouped).sort((a, b) => b.totalDKK - a.totalDKK);
-  const totalDKK = donations.reduce((s, d) => s + d.amountDKK, 0);
-  const uniqueDonors = new Set(donations.map((d) => d.name)).size;
-  const songs = donations.filter((d) => d.song);
-  const unplayedSongs = songs.filter((d) => !d.songPlayed);
-  const playedSongs = songs.filter((d) => d.songPlayed);
-  const latest = donations.length > 0 ? donations[donations.length - 1] : null;
-
-  // Celebration trigger
-  useEffect(() => {
-    if (leaderboard.length === 0) return;
-    const currentTop = leaderboard[0];
-    if (prevTopRef.current && prevTopRef.current !== currentTop.name && currentTop.count > 0) {
-      setCelebration({ name: currentTop.name, total: Math.round(currentTop.totalDKK) });
-    }
-    prevTopRef.current = currentTop.name;
-  }, [leaderboard]);
-
-  const [spotifyQueue, setSpotifyQueue] = useState({ connected: false, currently_playing: null, is_playing: false, queue: [] });
+  const leaderboard   = Object.values(grouped).sort((a,b) => b.totalDKK - a.totalDKK);
+  const maxDKK        = leaderboard[0]?.totalDKK || 1;
+  const totalRaised   = donations.reduce((s,d) => s + d.amountDKK, 0);
+  const uniqueDonors  = new Set(donations.map(d => d.name)).size;
+  const unplayedSongs = donations.filter(d => d.song && !d.songPlayed);
+  const recent        = [...donations].reverse().slice(0,6);
 
   useEffect(() => {
-    if (mode !== 'live') return;
-    const poll = () => fetch('/api/spotify/queue').then((r) => r.json()).then(setSpotifyQueue).catch(() => {});
-    poll();
-    const id = setInterval(poll, 5000);
-    return () => clearInterval(id);
-  }, [mode]);
+    if (!leaderboard.length) return;
+    const top = leaderboard[0];
+    if (prevTopRef.current && prevTopRef.current !== top.name) setCelebration({ name:top.name, total:top.totalDKK });
+    prevTopRef.current = top.name;
+  }, [leaderboard.map(e=>e.name).join(',')]);
 
-  const medals = ['🥇', '🥈', '🥉'];
-  const rowBgs = [
-    'bg-gradient-to-r from-yellow-500/20 to-transparent border-yellow-500/30',
-    'bg-gradient-to-r from-gray-400/15 to-transparent border-gray-400/25',
-    'bg-gradient-to-r from-amber-700/15 to-transparent border-amber-700/25',
-  ];
+  const timeAgo    = useTimeAgo(lastUpdated);
+  const nowPlaying = mode === 'live' && spotifyQueue.connected && spotifyQueue.currently_playing ? spotifyQueue.currently_playing : null;
+  const demoTrack  = mode === 'demo' && unplayedSongs.length > 0 ? unplayedSongs[0] : null;
+  const donateUrl  = kofiUrl || KOFI_URL;
+  const donateDisp = donateUrl.replace(/^https?:\/\//, '');
 
   return (
-    <div className="min-h-screen relative">
-      <FloatingHats />
-      {celebration && (
-        <Celebration name={celebration.name} total={celebration.total} onDone={() => setCelebration(null)} />
-      )}
+    <div style={{ minHeight:'100vh', fontFamily:"'Space Grotesk', sans-serif", color:T.text, position:'relative', overflow:'hidden' }}>
 
-      <div className="relative z-10">
-        {/* Header */}
-        <header className="pt-6 pb-4 px-8 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="text-5xl" style={{ animation: 'floatHat 3s ease-in-out infinite' }}>🎩</span>
-            <h1 className="font-heading text-4xl font-black text-gold">{eventName}</h1>
+      {/* Background image */}
+      <div style={{ position:'fixed', inset:0, backgroundImage:'url(/bg.png)', backgroundSize:'cover', backgroundPosition:'center bottom', zIndex:0 }}/>
+      {/* Dark overlay */}
+      <div style={{ position:'fixed', inset:0, background:'linear-gradient(180deg, rgba(8,6,3,0.35) 0%, rgba(8,6,3,0.1) 30%, rgba(8,6,3,0.1) 70%, rgba(8,6,3,0.4) 100%)', zIndex:1 }}/>
+
+      {celebration && <Celebration name={celebration.name} total={celebration.total} onDone={() => setCelebration(null)}/>}
+
+      {/* Layout */}
+      <div style={{ position:'relative', zIndex:2, display:'grid', gridTemplateRows:'auto 1fr', minHeight:'100vh', padding:'1.5rem', gap:'1.25rem' }}>
+
+        {/* ── Header ── */}
+        <Panel style={{ padding:'0.875rem 1.5rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ display:'flex', alignItems:'baseline', gap:'1rem' }}>
+            <span style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(1.6rem, 3vw, 2.4rem)', color:T.accent, letterSpacing:'0.06em', lineHeight:1 }}>NØRREBROS</span>
+            <span style={{ fontWeight:600, fontSize:'clamp(0.85rem, 1.4vw, 1.05rem)', color:T.text, letterSpacing:'-0.01em' }}>{eventName}</span>
           </div>
-          {mode === 'live' && (
-            <div className="flex items-center gap-2 text-sm text-white/50">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"/>
-              Live
-            </div>
-          )}
-        </header>
-
-        {/* Stats bar */}
-        <div className="px-8 mb-6">
-          <div className="flex gap-6 bg-white/5 rounded-xl p-4 border border-white/10">
-            <Stat label="Total Raised" value={`${Math.round(totalDKK).toLocaleString('da-DK')} DKK`} big />
-            <Stat label="Donors" value={uniqueDonors} />
-            <Stat label="Donations" value={donations.length} />
-            <Stat label="Songs Queued" value={unplayedSongs.length} />
-          </div>
-        </div>
-
-        {/* Latest donation banner */}
-        {latest && (
-          <div className="px-8 mb-6" key={latest.id} style={{ animation: 'slideUp 0.5s ease-out' }}>
-            <div className="bg-gradient-to-r from-gold/20 to-amber/10 border border-gold/30 rounded-xl p-4 flex items-center gap-4">
-              <span className="text-3xl">🎉</span>
-              <div className="flex-1">
-                <span className="text-gold font-semibold">{latest.name}</span>
-                <span className="text-white/40 mx-2">just donated</span>
-                <span className="font-mono font-bold text-amber">
-                  {Math.round(latest.amountDKK).toLocaleString('da-DK')} DKK
-                </span>
-                {latest.currency !== 'DKK' && (
-                  <span className="text-white/30 text-sm ml-2">({latest.amount} {latest.currency})</span>
-                )}
-                {latest.message && (
-                  <span className="text-white/50 ml-3 italic">"{latest.message}"</span>
-                )}
+          <div style={{ display:'flex', alignItems:'center', gap:'0.625rem' }}>
+            {[
+              { v: Math.round(totalRaised).toLocaleString('da-DK') + ' DKK', l:'' },
+              { v: String(uniqueDonors), l: uniqueDonors === 1 ? 'donor' : 'donors' },
+              { v: String(unplayedSongs.length), l:'queued' },
+            ].map(({ v, l }) => (
+              <div key={l||v} style={{ background:T.glassLight, border:`1px solid ${T.border}`, borderRadius:20, padding:'4px 13px', display:'flex', alignItems:'center', gap:'0.35rem' }}>
+                <span style={{ fontFamily:"'DM Mono', monospace", fontWeight:500, fontSize:'0.82rem', color:T.text }}>{v}</span>
+                {l && <span style={{ fontSize:'0.68rem', color:T.textSub }}>{l}</span>}
               </div>
-              {latest.song && <span className="text-xl">🎵</span>}
-            </div>
+            ))}
+            {mode === 'live' && (
+              <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                <div style={{ width:7, height:7, borderRadius:'50%', background:'#4caf50', animation:'pulse 2s infinite' }}/>
+                <span style={{ fontSize:'0.68rem', letterSpacing:'0.14em', color:T.textSub }}>LIVE</span>
+              </div>
+            )}
           </div>
-        )}
+        </Panel>
 
-        {/* Main content */}
-        <div className="px-8 flex gap-6">
+        {/* ── Body grid ── */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr clamp(280px,29vw,360px)', gap:'1.25rem', minHeight:0 }}>
+
           {/* Leaderboard */}
-          <div className="flex-1">
-            <h2 className="font-heading text-xl font-bold text-white/80 mb-3">Leaderboard</h2>
-            <div className="space-y-2">
-              {leaderboard.map((entry, i) => (
-                <div
-                  key={entry.name}
-                  className={`flex items-center gap-4 rounded-xl px-4 py-3 border transition-all ${
-                    i < 3 ? rowBgs[i] : 'bg-white/5 border-white/10'
-                  }`}
-                  style={{ animation: 'slideUp 0.4s ease-out' }}
-                >
-                  {/* Rank */}
-                  <div className="w-10 text-center">
-                    {i < 3 ? (
-                      <span className="text-2xl">{medals[i]}</span>
-                    ) : (
-                      <span className="font-mono text-white/30 text-lg">{i + 1}</span>
-                    )}
-                  </div>
+          <Panel style={{ padding:'1.5rem', overflowY:'auto', display:'flex', flexDirection:'column' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.25rem' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'0.625rem' }}>
+                <span style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'1.1rem', color:T.text, letterSpacing:'0.12em' }}>LEADERBOARD</span>
+              </div>
+              {timeAgo && <span style={{ fontSize:'0.65rem', color:T.textMuted }}>{timeAgo}</span>}
+            </div>
 
-                  {/* Hat */}
-                  <HatIcon name={entry.name} size={36} />
+            <div style={{ display:'flex', flexDirection:'column', flex:1 }}>
+              {leaderboard.slice(0,10).map((entry, i) => {
+                const isFirst = i === 0;
+                const pct     = (entry.totalDKK / maxDKK) * 100;
+                const song    = entry.lastSong;
+                const songLbl = song?.songHidden ? 'Mystery song' : song?.song;
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-lg truncate">{entry.name}</span>
-                      {entry.count > 1 && (
-                        <span className="text-xs bg-gold/20 text-gold px-2 py-0.5 rounded-full">
-                          {entry.count}× donated
+                return (
+                  <div key={entry.name} style={{
+                    display:'flex', alignItems:'center', gap:'0.875rem',
+                    padding: isFirst ? '1rem 0.875rem' : '0.65rem 0.875rem',
+                    marginBottom: isFirst ? '0.625rem' : '0.125rem',
+                    borderRadius:10,
+                    background: isFirst ? T.accentBg : i < 3 ? 'rgba(255,255,255,0.03)' : 'transparent',
+                    border:`1px solid ${isFirst ? T.accentBorder : i < 3 ? T.border : 'transparent'}`,
+                    animation:'fadeSlideIn 0.4s ease-out',
+                  }}>
+                    {/* Rank */}
+                    <div style={{ width:30, textAlign:'right', flexShrink:0, fontFamily:"'DM Mono', monospace", fontWeight:500, fontSize: isFirst ? '1rem' : '0.8rem', color: isFirst ? T.accent : i < 3 ? T.textSub : T.textMuted }}>
+                      {i + 1}
+                    </div>
+
+                    <Avatar name={entry.name} size={isFirst ? 44 : 34}/>
+
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                        <span style={{ fontWeight: isFirst ? 700 : i < 3 ? 600 : 500, fontSize: isFirst ? 'clamp(1.05rem,1.7vw,1.3rem)' : 'clamp(0.88rem,1.2vw,1rem)', color: isFirst ? T.accent : i < 3 ? T.text : 'rgba(242,237,228,0.6)', letterSpacing:'-0.01em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                          {entry.name}
                         </span>
-                      )}
-                    </div>
-                    {entry.lastMessage && (
-                      <p className="text-sm text-white/40 italic truncate">{entry.lastMessage}</p>
-                    )}
-                  </div>
-
-                  {/* Amount */}
-                  <div className="text-right">
-                    <div className="font-mono font-bold text-lg text-gold">
-                      {Math.round(entry.totalDKK).toLocaleString('da-DK')} DKK
-                    </div>
-                    {entry.lastCurrency !== 'DKK' && (
-                      <div className="text-xs text-white/30">
-                        last: {entry.lastAmount} {entry.lastCurrency}
+                        {entry.count > 1 && <span style={{ fontSize:'0.62rem', color:T.textSub, background:'rgba(255,255,255,0.07)', padding:'1px 6px', borderRadius:20 }}>{entry.count}×</span>}
                       </div>
-                    )}
+                      {songLbl && (
+                        <div style={{ fontSize:'0.68rem', color:T.textSub, marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
+                          <span>{song?.songHidden ? '🔒' : '♫'}</span>
+                          <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{songLbl}</span>
+                        </div>
+                      )}
+                      <div style={{ marginTop: isFirst ? 8 : 5, height: isFirst ? 2 : 1, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden' }}>
+                        <div style={{ width:`${pct}%`, height:'100%', borderRadius:2, background: isFirst ? T.accent : i < 3 ? 'rgba(242,237,228,0.28)' : 'rgba(242,237,228,0.1)', transition:'width 0.9s ease' }}/>
+                      </div>
+                    </div>
+
+                    <div style={{ fontFamily:"'DM Mono', monospace", fontWeight:500, flexShrink:0, fontSize: isFirst ? 'clamp(1rem,1.5vw,1.15rem)' : 'clamp(0.82rem,1.1vw,0.92rem)', color: isFirst ? T.accent : i < 3 ? T.text : 'rgba(242,237,228,0.5)', whiteSpace:'nowrap' }}>
+                      {fmtDKK(entry.totalDKK)}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {leaderboard.length === 0 && (
-                <div className="text-center py-16 text-white/30">
-                  <p className="text-4xl mb-4">🎩</p>
-                  <p>Waiting for first donation...</p>
+                <div style={{ textAlign:'center', flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:T.textMuted }}>
+                  <div style={{ fontSize:'2rem', marginBottom:10 }}>—</div>
+                  <div style={{ fontSize:'0.82rem', letterSpacing:'0.08em' }}>Waiting for donations</div>
                 </div>
               )}
             </div>
-          </div>
+          </Panel>
 
-          {/* Right sidebar */}
-          <div className="w-72 shrink-0 space-y-4">
-            <div className="sticky top-6 space-y-4">
+          {/* Right column */}
+          <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem', minHeight:0, overflowY:'auto' }}>
 
-              {/* Now Playing */}
-              {mode === 'live' && spotifyQueue.connected && spotifyQueue.currently_playing && (
-                <div className="bg-green-500/10 border border-green-500/25 rounded-xl p-3">
-                  <div className="text-xs text-green-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                    <span className={spotifyQueue.is_playing ? 'animate-pulse' : ''}>▶</span> Now Playing
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {spotifyQueue.currently_playing.art && (
-                      <img src={spotifyQueue.currently_playing.art} className="w-10 h-10 rounded" />
-                    )}
-                    <div className="min-w-0">
-                      <div className="font-semibold text-sm text-white truncate">{spotifyQueue.currently_playing.name}</div>
-                      <div className="text-xs text-white/40 truncate">{spotifyQueue.currently_playing.artist}</div>
-                      {(() => {
-                        const match = donations.find((d) => d.song && spotifyQueue.currently_playing.name.toLowerCase().includes(d.song.toLowerCase().split(' — ')[0].split(' - ')[0].trim()));
-                        return match ? <div className="text-xs text-green-400/60 mt-0.5">by {match.name}</div> : null;
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Next 2 queued songs */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <h2 className="font-heading text-lg font-bold text-white/80">🎵 Up Next</h2>
-                  {mode === 'live' && (
-                    <span className={`w-2 h-2 rounded-full ${spotifyQueue.connected ? 'bg-green-500 animate-pulse' : 'bg-red-500/60'}`} />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {(() => {
-                    // Build display list: merge Spotify queue with donation info (max 2)
-                    const spotifyNext = mode === 'live' ? spotifyQueue.queue.slice(0, 2) : [];
-                    const items = spotifyNext.length > 0
-                      ? spotifyNext.map((track) => {
-                          const donation = donations.find((d) => d.song && !d.songPlayed &&
-                            track.name.toLowerCase().includes(d.song.toLowerCase().split(' — ')[0].split(' - ')[0].trim())
-                          );
-                          return { track, donation };
-                        })
-                      : unplayedSongs.slice(0, 2).map((d) => ({ track: null, donation: d }));
-
-                    if (items.length === 0) return (
-                      <div className="text-white/25 text-sm text-center py-3 bg-white/5 rounded-xl border border-white/10">
-                        No songs queued yet
+            {/* Now Playing */}
+            <Panel style={{ padding:'1.25rem 1.25rem 1.35rem' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1rem' }}>
+                <SectionLabel>NOW PLAYING</SectionLabel>
+                <EqBars active={!!(nowPlaying || demoTrack)}/>
+              </div>
+              {(nowPlaying || demoTrack) ? (
+                <div style={{ display:'flex', gap:'0.875rem', alignItems:'center' }}>
+                  {nowPlaying?.art
+                    ? <img src={nowPlaying.art} alt="" style={{ width:54, height:54, borderRadius:7, flexShrink:0, objectFit:'cover' }}/>
+                    : <div style={{ width:54, height:54, borderRadius:7, flexShrink:0, background:'rgba(255,255,255,0.06)', border:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.4rem' }}>
+                        {demoTrack?.songHidden ? '🔒' : '♫'}
                       </div>
-                    );
-
-                    return items.map(({ track, donation }, i) => {
-                      const isDonation = !!donation;
-                      const isHidden = donation?.songHidden;
-                      const name = track?.name || (!isHidden ? donation?.song : null);
-                      const artist = track?.artist || '';
-                      const art = track?.art;
-
-                      return (
-                        <div key={i} className={`rounded-xl px-3 py-2.5 border ${i === 0 ? 'bg-gold/10 border-gold/25' : 'bg-white/5 border-white/10'}`}>
-                          <div className="flex items-center gap-2">
-                            {art && <img src={art} className="w-8 h-8 rounded shrink-0" />}
-                            <div className="flex-1 min-w-0">
-                              {isHidden ? (
-                                <div className="text-sm font-semibold text-white/50 italic">🔒 Mystery song</div>
-                              ) : (
-                                <div className="text-sm font-semibold text-white truncate">{name}</div>
-                              )}
-                              {artist && !isHidden && <div className="text-xs text-white/35 truncate">{artist}</div>}
-                              {isDonation ? (
-                                <div className="text-xs text-gold/60 mt-0.5 flex items-center gap-1">
-                                  <span>🎁</span>
-                                  <span>requested by {donation.name}</span>
-                                </div>
-                              ) : (
-                                <div className="text-xs text-white/20 mt-0.5">from playlist</div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
-
-                  {/* Count remaining */}
-                  {unplayedSongs.length > 2 && (
-                    <div className="text-xs text-white/30 text-center py-1">
-                      +{unplayedSongs.length - 2} more requested
+                  }
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontWeight:700, fontSize:'clamp(0.92rem,1.4vw,1.05rem)', color:T.text, marginBottom:4, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>
+                      {nowPlaying?.name || (demoTrack?.songHidden ? 'Mystery Song' : demoTrack?.song)}
                     </div>
-                  )}
+                    <div style={{ fontSize:'0.78rem', color:T.textSub }}>
+                      {nowPlaying?.artist || (demoTrack ? `Requested by ${demoTrack.name}` : '')}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color:T.textMuted, fontSize:'0.82rem' }}>Nothing queued yet</div>
+              )}
+            </Panel>
 
-                  {/* Played */}
-                  {playedSongs.length > 0 && (
-                    <div className="pt-1">
-                      <div className="text-xs text-white/20 uppercase tracking-wider mb-1">Played</div>
-                      {playedSongs.slice(-3).map((d) => (
-                        <div key={d.id} className="text-xs text-white/20 line-through py-0.5 truncate px-1">
-                          {d.songHidden ? '🔒 Mystery' : d.song}
-                        </div>
-                      ))}
+            {/* Recent donations */}
+            <Panel style={{ padding:'1.25rem', flex:'1 1 auto', overflowY:'auto', minHeight:0 }}>
+              <SectionLabel>RECENT DONATIONS</SectionLabel>
+              {recent.length === 0
+                ? <div style={{ color:T.textMuted, fontSize:'0.82rem' }}>—</div>
+                : <div style={{ display:'flex', flexDirection:'column', gap:'0.375rem' }}>
+                    {recent.map((d,i) => <RecentItem key={d.id} donation={d} fresh={i===0}/>)}
+                  </div>
+              }
+            </Panel>
+
+            {/* Donate */}
+            <Panel style={{ padding:'1.25rem' }}>
+              <SectionLabel>DONATE &amp; GET YOUR SONG PLAYED</SectionLabel>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.875rem' }}>
+                <div style={{ background:'white', padding:10, borderRadius:12 }}>
+                  <QRCodeSVG value={donateUrl} size={170} level="M"/>
+                </div>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontWeight:700, fontSize:'clamp(0.95rem,1.4vw,1.1rem)', color:T.text, marginBottom:4, wordBreak:'break-all' }}>
+                    {donateDisp}
+                  </div>
+                  <div style={{ fontSize:'0.75rem', color:T.textSub, marginBottom:8 }}>
+                    Scan to donate &amp; get your song played
+                  </div>
+                  {minDonation && (
+                    <div style={{ display:'inline-block', background:T.accentBg, border:`1px solid ${T.accentBorder}`, borderRadius:20, padding:'3px 12px', fontSize:'0.72rem', color:T.accent, letterSpacing:'0.06em' }}>
+                      min. {minDonation} DKK
                     </div>
                   )}
                 </div>
               </div>
+            </Panel>
 
-              {/* QR Code + Donation CTA */}
-              {kofiUrl && (
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-                  <p className="text-white/60 text-sm font-semibold mb-1">Support the event</p>
-                  {minDonation && (
-                    <p className="text-gold text-xs mb-3">min. {minDonation} DKK to join the leaderboard</p>
-                  )}
-                  <div className="flex justify-center mb-3">
-                    <div className="bg-white p-2 rounded-lg">
-                      <QRCodeSVG value={kofiUrl} size={110} />
-                    </div>
-                  </div>
-                  <p className="text-white/30 text-xs break-all">{kofiUrl}</p>
-                </div>
-              )}
-
-            </div>
           </div>
         </div>
       </div>
 
       <style>{`
-        @keyframes floatHat {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          25% { transform: translateY(-20px) rotate(5deg); }
-          50% { transform: translateY(-10px) rotate(-3deg); }
-          75% { transform: translateY(-25px) rotate(3deg); }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes popIn {
-          from { opacity: 0; transform: scale(0.5); }
-          to { opacity: 1; transform: scale(1); }
-        }
+        * { box-sizing: border-box; }
+        body { margin: 0; }
+        @keyframes fadeIn      { from { opacity:0; }                         to { opacity:1; } }
+        @keyframes popIn       { from { opacity:0; transform:scale(0.8); }  to { opacity:1; transform:scale(1); } }
+        @keyframes fadeSlideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes pulse       { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+        @keyframes eq1         { from { height:4px; }  to { height:13px; } }
+        @keyframes eq2         { from { height:9px; }  to { height:4px;  } }
+        @keyframes eq3         { from { height:3px; }  to { height:12px; } }
+        ::-webkit-scrollbar            { width: 4px; }
+        ::-webkit-scrollbar-track      { background: transparent; }
+        ::-webkit-scrollbar-thumb      { background: rgba(255,255,255,0.1); border-radius: 4px; }
       `}</style>
     </div>
   );
 }
 
-function Stat({ label, value, big }) {
-  return (
-    <div className="flex-1 text-center">
-      <div className={`font-mono font-bold ${big ? 'text-2xl text-gold' : 'text-xl text-white'}`}>{value}</div>
-      <div className="text-xs text-white/40 uppercase tracking-wider">{label}</div>
-    </div>
-  );
-}
-
-// --- App root ---
+// ─── App root ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [screen, setScreen] = useState('setup');
-  const [eventName, setEventName] = useState('');
-  const [mode, setMode] = useState('demo');
-  const [kofiUrl, setKofiUrl] = useState('');
-  const [minDonation, setMinDonation] = useState('');
-
-  const handleStart = (name, m, url, min) => {
-    setEventName(name);
-    setMode(m);
-    setKofiUrl(url);
-    setMinDonation(min);
-    setScreen('leaderboard');
-  };
+  const [cfg,    setCfg]    = useState({ eventName:'', mode:'demo', kofiUrl:KOFI_URL, minDonation:'10' });
 
   return screen === 'setup'
-    ? <SetupScreen onStart={handleStart} />
-    : <Leaderboard eventName={eventName} mode={mode} kofiUrl={kofiUrl} minDonation={minDonation} />;
+    ? <SetupScreen onStart={(eventName, mode, kofiUrl, minDonation) => { setCfg({ eventName, mode, kofiUrl, minDonation }); setScreen('leaderboard'); }}/>
+    : <Leaderboard {...cfg}/>;
 }
