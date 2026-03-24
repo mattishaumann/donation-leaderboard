@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 
 // --- Constants ---
 const RATES = { DKK: 1, EUR: 7.46, USD: 6.88, GBP: 8.68, SEK: 0.64, NOK: 0.64 };
@@ -148,7 +149,7 @@ function FloatingHats() {
 // --- Celebration overlay ---
 function Celebration({ name, total, onDone }) {
   useEffect(() => {
-    const t = setTimeout(onDone, 4000);
+    const t = setTimeout(onDone, 3000);
     return () => clearTimeout(t);
   }, [onDone]);
 
@@ -168,6 +169,8 @@ function Celebration({ name, total, onDone }) {
 function SetupScreen({ onStart }) {
   const [eventName, setEventName] = useState('Hat Party 2026');
   const [mode, setMode] = useState('demo');
+  const [kofiUrl, setKofiUrl] = useState('');
+  const [minDonation, setMinDonation] = useState('20');
 
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -179,9 +182,25 @@ function SetupScreen({ onStart }) {
 
         <label className="block text-sm text-white/60 mb-1">Event Name</label>
         <input
-          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white mb-6 focus:outline-none focus:border-gold"
+          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white mb-4 focus:outline-none focus:border-gold"
           value={eventName}
           onChange={(e) => setEventName(e.target.value)}
+        />
+
+        <label className="block text-sm text-white/60 mb-1">Ko-fi Donation URL</label>
+        <input
+          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white mb-4 focus:outline-none focus:border-gold placeholder-white/20"
+          placeholder="https://ko-fi.com/yourname"
+          value={kofiUrl}
+          onChange={(e) => setKofiUrl(e.target.value)}
+        />
+
+        <label className="block text-sm text-white/60 mb-1">Minimum Donation (DKK)</label>
+        <input
+          type="number"
+          className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white mb-6 focus:outline-none focus:border-gold"
+          value={minDonation}
+          onChange={(e) => setMinDonation(e.target.value)}
         />
 
         <label className="block text-sm text-white/60 mb-2">Mode</label>
@@ -204,18 +223,8 @@ function SetupScreen({ onStart }) {
           </button>
         </div>
 
-        {mode === 'live' && (
-          <div className="bg-white/5 rounded-lg p-4 mb-6 text-sm text-white/50">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"/>
-              <span>Will poll /api/donations every 3s</span>
-            </div>
-            <p>Set up Ko-fi webhook → your ngrok URL + /webhook/kofi</p>
-          </div>
-        )}
-
         <button
-          onClick={() => onStart(eventName, mode)}
+          onClick={() => onStart(eventName, mode, kofiUrl, minDonation)}
           className="w-full py-4 rounded-xl bg-gradient-to-r from-gold to-amber text-dark font-heading font-bold text-lg hover:scale-[1.02] transition-transform"
         >
           Launch Leaderboard
@@ -226,7 +235,7 @@ function SetupScreen({ onStart }) {
 }
 
 // --- Main Leaderboard ---
-function Leaderboard({ eventName, mode }) {
+function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
   const [donations, setDonations] = useState([]);
   const [celebration, setCelebration] = useState(null);
   const prevTopRef = useRef(null);
@@ -317,15 +326,15 @@ function Leaderboard({ eventName, mode }) {
     prevTopRef.current = currentTop.name;
   }, [leaderboard]);
 
-  const markPlayed = async (id) => {
-    if (mode === 'live') {
-      await fetch(`/api/donations/${id}/played`, { method: 'POST' });
-      const res = await fetch('/api/donations');
-      setDonations(await res.json());
-    } else {
-      setDonations((prev) => prev.map((d) => (d.id === id ? { ...d, songPlayed: true } : d)));
-    }
-  };
+  const [spotifyQueue, setSpotifyQueue] = useState({ connected: false, currently_playing: null, is_playing: false, queue: [] });
+
+  useEffect(() => {
+    if (mode !== 'live') return;
+    const poll = () => fetch('/api/spotify/queue').then((r) => r.json()).then(setSpotifyQueue).catch(() => {});
+    poll();
+    const id = setInterval(poll, 5000);
+    return () => clearInterval(id);
+  }, [mode]);
 
   const medals = ['🥇', '🥈', '🥉'];
   const rowBgs = [
@@ -453,47 +462,129 @@ function Leaderboard({ eventName, mode }) {
             </div>
           </div>
 
-          {/* Song Queue sidebar */}
-          <div className="w-80 shrink-0">
-            <div className="sticky top-6">
-              <h2 className="font-heading text-xl font-bold text-white/80 mb-3">🎵 Song Queue</h2>
-              <div className="bg-white/5 rounded-xl border border-white/10 p-4 space-y-2 max-h-[70vh] overflow-y-auto">
-                {unplayedSongs.length === 0 && playedSongs.length === 0 && (
-                  <p className="text-white/30 text-sm text-center py-4">
-                    No songs requested yet.<br />
-                    Donors can write "Song: ..." in their Ko-fi message!
-                  </p>
-                )}
+          {/* Right sidebar */}
+          <div className="w-72 shrink-0 space-y-4">
+            <div className="sticky top-6 space-y-4">
 
-                {unplayedSongs.map((d, i) => (
-                  <button
-                    key={d.id}
-                    onClick={() => markPlayed(d.id)}
-                    className={`w-full text-left rounded-lg px-3 py-2 transition hover:bg-white/10 ${
-                      i === 0 ? 'bg-gold/15 border border-gold/30' : 'bg-white/5'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      {i === 0 && <span className="text-gold">▶</span>}
-                      <span className="font-semibold text-sm truncate">{d.song}</span>
+              {/* Now Playing */}
+              {mode === 'live' && spotifyQueue.connected && spotifyQueue.currently_playing && (
+                <div className="bg-green-500/10 border border-green-500/25 rounded-xl p-3">
+                  <div className="text-xs text-green-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                    <span className={spotifyQueue.is_playing ? 'animate-pulse' : ''}>▶</span> Now Playing
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {spotifyQueue.currently_playing.art && (
+                      <img src={spotifyQueue.currently_playing.art} className="w-10 h-10 rounded" />
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm text-white truncate">{spotifyQueue.currently_playing.name}</div>
+                      <div className="text-xs text-white/40 truncate">{spotifyQueue.currently_playing.artist}</div>
+                      {(() => {
+                        const match = donations.find((d) => d.song && spotifyQueue.currently_playing.name.toLowerCase().includes(d.song.toLowerCase().split(' — ')[0].split(' - ')[0].trim()));
+                        return match ? <div className="text-xs text-green-400/60 mt-0.5">by {match.name}</div> : null;
+                      })()}
                     </div>
-                    <div className="text-xs text-white/30 mt-0.5">
-                      {d.name} — {Math.round(d.amountDKK)} DKK
-                    </div>
-                  </button>
-                ))}
+                  </div>
+                </div>
+              )}
 
-                {playedSongs.length > 0 && (
-                  <>
-                    <div className="text-xs text-white/20 uppercase tracking-wider mt-4 mb-1">Played</div>
-                    {playedSongs.map((d) => (
-                      <div key={d.id} className="px-3 py-1.5 text-white/20 line-through text-sm truncate">
-                        {d.song} — {d.name}
+              {/* Next 2 queued songs */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <h2 className="font-heading text-lg font-bold text-white/80">🎵 Up Next</h2>
+                  {mode === 'live' && (
+                    <span className={`w-2 h-2 rounded-full ${spotifyQueue.connected ? 'bg-green-500 animate-pulse' : 'bg-red-500/60'}`} />
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {(() => {
+                    // Build display list: merge Spotify queue with donation info (max 2)
+                    const spotifyNext = mode === 'live' ? spotifyQueue.queue.slice(0, 2) : [];
+                    const items = spotifyNext.length > 0
+                      ? spotifyNext.map((track) => {
+                          const donation = donations.find((d) => d.song && !d.songPlayed &&
+                            track.name.toLowerCase().includes(d.song.toLowerCase().split(' — ')[0].split(' - ')[0].trim())
+                          );
+                          return { track, donation };
+                        })
+                      : unplayedSongs.slice(0, 2).map((d) => ({ track: null, donation: d }));
+
+                    if (items.length === 0) return (
+                      <div className="text-white/25 text-sm text-center py-3 bg-white/5 rounded-xl border border-white/10">
+                        No songs queued yet
                       </div>
-                    ))}
-                  </>
-                )}
+                    );
+
+                    return items.map(({ track, donation }, i) => {
+                      const isDonation = !!donation;
+                      const isHidden = donation?.songHidden;
+                      const name = track?.name || (!isHidden ? donation?.song : null);
+                      const artist = track?.artist || '';
+                      const art = track?.art;
+
+                      return (
+                        <div key={i} className={`rounded-xl px-3 py-2.5 border ${i === 0 ? 'bg-gold/10 border-gold/25' : 'bg-white/5 border-white/10'}`}>
+                          <div className="flex items-center gap-2">
+                            {art && <img src={art} className="w-8 h-8 rounded shrink-0" />}
+                            <div className="flex-1 min-w-0">
+                              {isHidden ? (
+                                <div className="text-sm font-semibold text-white/50 italic">🔒 Mystery song</div>
+                              ) : (
+                                <div className="text-sm font-semibold text-white truncate">{name}</div>
+                              )}
+                              {artist && !isHidden && <div className="text-xs text-white/35 truncate">{artist}</div>}
+                              {isDonation ? (
+                                <div className="text-xs text-gold/60 mt-0.5 flex items-center gap-1">
+                                  <span>🎁</span>
+                                  <span>requested by {donation.name}</span>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-white/20 mt-0.5">from playlist</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+
+                  {/* Count remaining */}
+                  {unplayedSongs.length > 2 && (
+                    <div className="text-xs text-white/30 text-center py-1">
+                      +{unplayedSongs.length - 2} more requested
+                    </div>
+                  )}
+
+                  {/* Played */}
+                  {playedSongs.length > 0 && (
+                    <div className="pt-1">
+                      <div className="text-xs text-white/20 uppercase tracking-wider mb-1">Played</div>
+                      {playedSongs.slice(-3).map((d) => (
+                        <div key={d.id} className="text-xs text-white/20 line-through py-0.5 truncate px-1">
+                          {d.songHidden ? '🔒 Mystery' : d.song}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* QR Code + Donation CTA */}
+              {kofiUrl && (
+                <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+                  <p className="text-white/60 text-sm font-semibold mb-1">Support the event</p>
+                  {minDonation && (
+                    <p className="text-gold text-xs mb-3">min. {minDonation} DKK to join the leaderboard</p>
+                  )}
+                  <div className="flex justify-center mb-3">
+                    <div className="bg-white p-2 rounded-lg">
+                      <QRCodeSVG value={kofiUrl} size={110} />
+                    </div>
+                  </div>
+                  <p className="text-white/30 text-xs break-all">{kofiUrl}</p>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
@@ -537,14 +628,18 @@ export default function App() {
   const [screen, setScreen] = useState('setup');
   const [eventName, setEventName] = useState('');
   const [mode, setMode] = useState('demo');
+  const [kofiUrl, setKofiUrl] = useState('');
+  const [minDonation, setMinDonation] = useState('');
 
-  const handleStart = (name, m) => {
+  const handleStart = (name, m, url, min) => {
     setEventName(name);
     setMode(m);
+    setKofiUrl(url);
+    setMinDonation(min);
     setScreen('leaderboard');
   };
 
   return screen === 'setup'
     ? <SetupScreen onStart={handleStart} />
-    : <Leaderboard eventName={eventName} mode={mode} />;
+    : <Leaderboard eventName={eventName} mode={mode} kofiUrl={kofiUrl} minDonation={minDonation} />;
 }

@@ -27,7 +27,7 @@ function toDKK(amount, currency) {
 const SONG_PROMPT = (message) =>
   `You extract song requests from party donation messages.
 Return ONLY valid JSON — no markdown, no explanation.
-If there is a song request: {"song":"<title>","artist":"<artist or empty string>"}
+If there is a song request: {"song":"<title>","artist":"<artist or empty string>","hidden":<true if they want it kept secret/surprise/skjult/hemmeligt, else false>}
 If there is NO song request: {"song":null}
 Message: "${message.replace(/"/g, "'")}"`;
 
@@ -49,7 +49,7 @@ async function extractSongWithGemini(message) {
   if (json.error) throw new Error(json.error.message);
   const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
   const parsed = JSON.parse(text);
-  return parsed.song ? { song: parsed.song, artist: parsed.artist || '' } : null;
+  return parsed.song ? { song: parsed.song, artist: parsed.artist || '', hidden: parsed.hidden || false } : null;
 }
 
 async function extractSongWithGPT(message) {
@@ -69,7 +69,7 @@ async function extractSongWithGPT(message) {
   if (json.error) throw new Error(json.error.message);
   const text = json.choices?.[0]?.message?.content?.trim();
   const parsed = JSON.parse(text);
-  return parsed.song ? { song: parsed.song, artist: parsed.artist || '' } : null;
+  return parsed.song ? { song: parsed.song, artist: parsed.artist || '', hidden: parsed.hidden || false } : null;
 }
 
 async function extractSong(message) {
@@ -205,6 +205,51 @@ app.get('/api/spotify/status', (_req, res) => {
   res.json({ connected: !!spotifyTokens.access });
 });
 
+app.get('/api/spotify/queue', async (_req, res) => {
+  const token = await getSpotifyToken();
+  if (!token) return res.json({ connected: false, currently_playing: null, queue: [] });
+
+  const [queueRes, currentRes] = await Promise.all([
+    fetch('https://api.spotify.com/v1/me/player/queue', { headers: { Authorization: `Bearer ${token}` } }),
+    fetch('https://api.spotify.com/v1/me/player/currently-playing', { headers: { Authorization: `Bearer ${token}` } }),
+  ]);
+
+  const queueData = queueRes.status === 200 ? await queueRes.json() : null;
+  const currentData = currentRes.status === 200 ? await currentRes.json() : null;
+
+  const fmt = (t) => t ? ({ uri: t.uri, name: t.name, artist: t.artists?.[0]?.name || '', art: t.album?.images?.[2]?.url || null }) : null;
+
+  res.json({
+    connected: true,
+    currently_playing: fmt(currentData?.item),
+    is_playing: currentData?.is_playing || false,
+    queue: (queueData?.queue || []).slice(0, 15).map(fmt),
+  });
+});
+
+// Auto-mark donation songs as played when Spotify moves to them
+let lastPlayingUri = null;
+setInterval(async () => {
+  const token = await getSpotifyToken().catch(() => null);
+  if (!token) return;
+  const res = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+    headers: { Authorization: `Bearer ${token}` },
+  }).catch(() => null);
+  if (!res || res.status !== 200) return;
+  const data = await res.json().catch(() => null);
+  const uri = data?.item?.uri;
+  if (!uri || uri === lastPlayingUri) return;
+  lastPlayingUri = uri;
+  const trackName = (data.item.name || '').toLowerCase();
+  const donation = donations.find((d) => d.song && !d.songPlayed &&
+    d.song.toLowerCase().split(' — ')[0].split(' - ')[0].trim().includes(trackName.split(' ')[0])
+  );
+  if (donation) {
+    donation.songPlayed = true;
+    console.log(`Auto-marked as played: ${donation.song}`);
+  }
+}, 5000);
+
 // ── Ko-fi webhook ─────────────────────────────────────────────────────────────
 
 app.post('/webhook/kofi', async (req, res) => {
@@ -237,6 +282,7 @@ app.post('/webhook/kofi', async (req, res) => {
     name: data.from_name || 'Anonymous',
     message,
     song: songLabel,
+    songHidden: songInfo?.hidden || false,
     songPlayed: false,
     amount: parseFloat(data.amount),
     currency: data.currency,
