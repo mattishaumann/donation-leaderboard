@@ -144,10 +144,12 @@ function SectionLabel({ children }) {
 
 // ─── Announcement overlay (every donation; extra special for new #1) ──────────
 function Announcement({ donation, isTop, onDone }) {
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
   useEffect(() => {
-    const t = setTimeout(onDone, isTop ? 3800 : 2800);
+    const t = setTimeout(() => onDoneRef.current(), isTop ? 3800 : 2800);
     return () => clearTimeout(t);
-  }, [onDone, isTop]);
+  }, [isTop]);
 
   if (isTop) {
     return (
@@ -580,6 +582,9 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
                       <div style={{ marginTop: isFirst ? 10 : 6, height: barHeight, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden' }}>
                         <div style={{ width:`${pct}%`, height:'100%', borderRadius:2, background: barColor, transition:'width 0.9s ease' }}/>
                       </div>
+                    </div>
+                    <div style={{ fontFamily:"'DM Mono', monospace", fontWeight:500, flexShrink:0, fontSize: isFirst ? 'clamp(1rem,1.5vw,1.15rem)' : '0.85rem', color: isFirst ? T.accent : isSecond || isThird ? T.text : 'rgba(242,237,228,0.45)', whiteSpace:'nowrap' }}>
+                      {fmtDKK(entry.totalDKK)}
                     </div>
                   </div>
                 );
