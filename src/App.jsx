@@ -144,17 +144,27 @@ function SectionLabel({ children }) {
 
 // ─── Announcement overlay (every donation; extra special for new #1) ──────────
 function Announcement({ donation, isTop, onDone }) {
+  const [out, setOut] = useState(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+
   useEffect(() => {
-    const t = setTimeout(() => onDoneRef.current(), isTop ? 3800 : 2800);
-    return () => clearTimeout(t);
+    const holdMs = isTop ? 2600 : 1800;
+    const t1 = setTimeout(() => setOut(true), holdMs);
+    const t2 = setTimeout(() => onDoneRef.current(), holdMs + 600);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [isTop]);
+
+  const wrap = {
+    position:'fixed', inset:0, zIndex:99,
+    display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+    animation: out ? 'fadeOut 0.6s ease-out forwards' : 'fadeIn 0.35s ease-out',
+  };
 
   if (isTop) {
     return (
-      <div style={{ position:'fixed', inset:0, zIndex:99, background:'rgba(10,8,5,0.94)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.35s' }}>
-        <div style={{ textAlign:'center', animation:'popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275)' }}>
+      <div style={{ ...wrap, background:'rgba(10,8,5,0.94)' }}>
+        <div style={{ textAlign:'center', animation: out ? 'none' : 'popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275)' }}>
           <div style={{ fontSize:'0.65rem', letterSpacing:'0.22em', color:T.accent, fontVariant:'small-caps', marginBottom:8 }}>The Legend,</div>
           <div style={{ fontSize:'0.7rem', letterSpacing:'0.24em', color:T.textSub, marginBottom:14 }}>NEW #1 DONOR</div>
           <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(3.5rem,8vw,6rem)', color:T.accent, lineHeight:1, marginBottom:14, textShadow:'0 0 48px rgba(240,212,74,0.45)' }}>{donation.name}</div>
@@ -167,8 +177,8 @@ function Announcement({ donation, isTop, onDone }) {
   }
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:99, background:'rgba(10,8,5,0.88)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.3s' }}>
-      <div style={{ textAlign:'center', animation:'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275)' }}>
+    <div style={{ ...wrap, background:'rgba(10,8,5,0.88)' }}>
+      <div style={{ textAlign:'center', animation: out ? 'none' : 'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275)' }}>
         <div style={{ fontSize:'0.65rem', letterSpacing:'0.24em', color:T.textMuted, marginBottom:18 }}>NEW DONATION</div>
         <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(2.8rem,6vw,5rem)', color:T.text, lineHeight:1, marginBottom:10 }}>{donation.name}</div>
         <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'1.5rem', color:T.accent, marginBottom: (donation.message || donation.song) ? 14 : 0 }}>{fmtDKK(donation.amountDKK)}</div>
