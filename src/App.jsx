@@ -24,22 +24,19 @@ const KOFI_URL   = 'https://ko-fi.com/norrebros';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
-  // Backgrounds
-  pageBg:     '#0a0805',
-  glass:      'rgba(6, 4, 2, 0.28)',
-  glassLight: 'rgba(6, 4, 2, 0.20)',
-  // Borders
-  border:     'rgba(255,255,255,0.14)',
-  borderHi:   'rgba(255,255,255,0.24)',
-  // Text
-  text:       '#f2ede4',
-  textSub:    'rgba(242,237,228,0.5)',
-  textMuted:  'rgba(242,237,228,0.22)',
-  // Accent — warm yellow, echoes the building
-  accent:     '#f0d44a',
-  accentBg:   'rgba(240,212,74,0.1)',
+  pageBg:      '#0a0805',
+  glass:       'rgba(6, 4, 2, 0.28)',
+  glassLight:  'rgba(6, 4, 2, 0.20)',
+  border:      'rgba(255,255,255,0.14)',
+  borderHi:    'rgba(255,255,255,0.24)',
+  text:        '#f2ede4',
+  textSub:     'rgba(242,237,228,0.5)',
+  textMuted:   'rgba(242,237,228,0.22)',
+  accent:      '#f0d44a',
+  accentBg:    'rgba(240,212,74,0.1)',
   accentBorder:'rgba(240,212,74,0.28)',
-  // Avatar palette
+  silver:      '#b0b8c8',
+  bronze:      '#b87333',
   avatars: ['#5b8fa8','#8a6ba8','#a86b6b','#6ba88a','#a89e6b','#6b7ea8','#a8816b','#7aa86b'],
 };
 
@@ -88,7 +85,7 @@ function Avatar({ name, size = 40 }) {
   );
 }
 
-// ─── Eq bars ─────────────────────────────────────────────────────────────────
+// ─── Eq bars ──────────────────────────────────────────────────────────────────
 function EqBars({ active }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2.5, height: 14 }}>
@@ -121,13 +118,16 @@ function Panel({ children, style = {} }) {
 
 function SectionLabel({ children }) {
   return (
-    <div style={{ fontSize: '0.62rem', letterSpacing: '0.2em', color: T.textSub, marginBottom: '0.875rem', fontFamily: "'Space Grotesk', sans-serif" }}>
+    <div style={{
+      fontSize: '0.71rem', letterSpacing: '0.2em', color: T.textSub,
+      marginBottom: '0.875rem', fontFamily: "'Space Grotesk', sans-serif",
+    }}>
       {children}
     </div>
   );
 }
 
-// ─── Celebration overlay ─────────────────────────────────────────────────────
+// ─── Celebration overlay ──────────────────────────────────────────────────────
 function Celebration({ name, total, onDone }) {
   useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
   return (
@@ -138,6 +138,82 @@ function Celebration({ name, total, onDone }) {
         <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'1.6rem', color:T.text, opacity:0.85 }}>{fmtDKK(total)}</div>
       </div>
     </div>
+  );
+}
+
+// ─── Donation Toast ───────────────────────────────────────────────────────────
+function DonationToast({ donation, onDone }) {
+  const [out, setOut] = useState(false);
+  useEffect(() => {
+    const t1 = setTimeout(() => setOut(true), 4000);
+    const t2 = setTimeout(onDone, 4500);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [onDone]);
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 24, left: 24, zIndex: 9998,
+      maxWidth: 320, minWidth: 240,
+      background: T.glass,
+      backdropFilter: 'blur(40px)',
+      WebkitBackdropFilter: 'blur(40px)',
+      border: `1px solid ${T.border}`,
+      borderLeft: `4px solid ${T.accent}`,
+      borderRadius: 10,
+      padding: '12px 16px',
+      animation: out ? 'fadeOut 0.45s ease-out forwards' : 'slideInLeft 0.35s ease-out',
+    }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: donation.message ? 6 : 0 }}>
+        <span style={{ fontWeight:700, color:T.accent, fontSize:'0.92rem', fontFamily:"'Space Grotesk', sans-serif" }}>
+          {donation.name}
+        </span>
+        <span style={{ fontFamily:"'DM Mono', monospace", fontSize:'0.78rem', color:T.textSub, marginLeft:12 }}>
+          {donation.amount} {donation.currency}
+        </span>
+      </div>
+      {donation.message ? (
+        <div style={{ fontSize:'0.8rem', color:T.text, fontStyle:'italic', lineHeight:1.4 }}>
+          "{donation.message}"
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ─── Fullscreen Button ────────────────────────────────────────────────────────
+function FullscreenButton() {
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    const h = () => setFull(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', h);
+    return () => document.removeEventListener('fullscreenchange', h);
+  }, []);
+  const toggle = () => {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  };
+  return (
+    <button
+      onClick={toggle}
+      onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+      onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
+      style={{
+        position: 'fixed', top: 12, right: 12, zIndex: 9999,
+        width: 34, height: 34,
+        background: 'rgba(255,255,255,0.07)',
+        border: `1px solid ${T.border}`,
+        borderRadius: 7,
+        color: T.textSub,
+        fontSize: '1.05rem',
+        cursor: 'pointer',
+        opacity: 0.4,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'opacity 0.2s',
+        padding: 0,
+      }}
+    >
+      {full ? '✕' : '⛶'}
+    </button>
   );
 }
 
@@ -196,13 +272,13 @@ function RecentItem({ donation: d, fresh }) {
     <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.4rem 0.6rem', borderRadius:8, background: fresh ? T.accentBg : 'transparent', border:`1px solid ${fresh ? T.accentBorder : 'transparent'}`, animation:'fadeSlideIn 0.35s ease-out' }}>
       <Avatar name={d.name} size={26}/>
       <div style={{ flex:1, minWidth:0 }}>
-        <span style={{ fontWeight:600, fontSize:'0.82rem', color: fresh ? T.accent : T.text }}>{d.name}</span>
-        {d.song && <span style={{ fontSize:'0.7rem', color:T.textSub, marginLeft:6 }}>♫ {d.songHidden ? 'mystery song' : d.song}</span>}
-        {!d.song && d.message && <span style={{ fontSize:'0.7rem', color:T.textSub, marginLeft:6, fontStyle:'italic' }}>"{d.message}"</span>}
+        <span style={{ fontWeight:600, fontSize:'0.94rem', color: fresh ? T.accent : T.text }}>{d.name}</span>
+        {d.song && <span style={{ fontSize:'0.8rem', color:T.textSub, marginLeft:6 }}>♫ {d.songHidden ? 'mystery song' : d.song}</span>}
+        {!d.song && d.message && <span style={{ fontSize:'0.8rem', color:T.textSub, marginLeft:6, fontStyle:'italic' }}>"{d.message}"</span>}
       </div>
       <div style={{ textAlign:'right', flexShrink:0 }}>
-        <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'0.8rem', color: fresh ? T.accent : T.text, whiteSpace:'nowrap' }}>{fmtDKK(d.amountDKK)}</div>
-        {ago && <div style={{ fontSize:'0.6rem', color:T.textMuted, marginTop:1 }}>{ago}</div>}
+        <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'0.92rem', color: fresh ? T.accent : T.text, whiteSpace:'nowrap' }}>{fmtDKK(d.amountDKK)}</div>
+        {ago && <div style={{ fontSize:'0.65rem', color:T.textMuted, marginTop:1 }}>{ago}</div>}
       </div>
     </div>
   );
@@ -214,10 +290,13 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
   const [celebration,  setCelebration]  = useState(null);
   const [lastUpdated,  setLastUpdated]  = useState(null);
   const [spotifyQueue, setSpotifyQueue] = useState({ connected:false, currently_playing:null, is_playing:false, queue:[] });
+  const [toast,        setToast]        = useState(null);
 
-  const prevTopRef  = useRef(null);
-  const demoIdRef   = useRef(100);
-  const seededRef   = useRef(false);
+  const prevTopRef     = useRef(null);
+  const demoIdRef      = useRef(100);
+  const seededRef      = useRef(false);
+  const knownIdsRef    = useRef(new Set());
+  const initializedRef = useRef(false);
 
   const makeDemoDonation = useCallback(() => {
     const name     = DANISH_NAMES[Math.floor(Math.random() * DANISH_NAMES.length)];
@@ -241,7 +320,10 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
 
   useEffect(() => {
     if (mode !== 'demo') return;
-    const id = setInterval(() => { setDonations(p => [...p, makeDemoDonation()]); setLastUpdated(new Date().toISOString()); }, 4000);
+    const id = setInterval(() => {
+      setDonations(p => [...p, makeDemoDonation()]);
+      setLastUpdated(new Date().toISOString());
+    }, 4000);
     return () => clearInterval(id);
   }, [mode, makeDemoDonation]);
 
@@ -256,6 +338,21 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
     const poll = () => fetch('/api/spotify/queue').then(r=>r.json()).then(setSpotifyQueue).catch(()=>{});
     poll(); const id = setInterval(poll, 5000); return () => clearInterval(id);
   }, [mode]);
+
+  // Detect new donations and trigger toast (skip initial batch)
+  useEffect(() => {
+    if (donations.length === 0) return;
+    if (!initializedRef.current) {
+      initializedRef.current = true;
+      donations.forEach(d => knownIdsRef.current.add(d.id));
+      return;
+    }
+    const newest = donations.filter(d => !knownIdsRef.current.has(d.id));
+    if (newest.length > 0) {
+      setToast(newest[newest.length - 1]);
+      newest.forEach(d => knownIdsRef.current.add(d.id));
+    }
+  }, [donations]);
 
   // Derived data
   const grouped = {};
@@ -272,6 +369,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
   const uniqueDonors  = new Set(donations.map(d => d.name)).size;
   const unplayedSongs = donations.filter(d => d.song && !d.songPlayed);
   const recent        = [...donations].reverse().slice(0,6);
+  const upNext        = unplayedSongs.slice(0, 3);
 
   useEffect(() => {
     if (!leaderboard.length) return;
@@ -289,15 +387,23 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
   return (
     <div style={{ minHeight:'100vh', fontFamily:"'Space Grotesk', sans-serif", color:T.text, position:'relative', overflow:'hidden' }}>
 
-      {/* Background image */}
+      {/* Background */}
       <div style={{ position:'fixed', inset:0, backgroundImage:'url(/bg.png)', backgroundSize:'cover', backgroundPosition:'center bottom', zIndex:0 }}/>
-      {/* Dark overlay */}
       <div style={{ position:'fixed', inset:0, background:'linear-gradient(180deg, rgba(8,6,3,0.35) 0%, rgba(8,6,3,0.1) 30%, rgba(8,6,3,0.1) 70%, rgba(8,6,3,0.4) 100%)', zIndex:1 }}/>
 
       {celebration && <Celebration name={celebration.name} total={celebration.total} onDone={() => setCelebration(null)}/>}
+      {toast && <DonationToast key={toast.id} donation={toast} onDone={() => setToast(null)}/>}
+      <FullscreenButton/>
 
       {/* Layout */}
-      <div style={{ position:'relative', zIndex:2, display:'grid', gridTemplateRows:'auto 1fr', minHeight:'100vh', padding:'1.5rem', gap:'1.25rem' }}>
+      <div style={{ position:'relative', zIndex:2, display:'grid', gridTemplateRows:'auto auto 1fr', minHeight:'100vh', padding:'1.5rem', gap:'1rem' }}>
+
+        {/* ── Banner ── */}
+        <Panel style={{ padding:'0.65rem 1.4rem' }}>
+          <p style={{ margin:0, fontFamily:"'Space Grotesk', sans-serif", fontSize:'0.94rem', color:'rgba(242,237,228,0.42)', lineHeight:1.5 }}>
+            We spent quite a lot of time cleaning and buying beers in the last parties in the 174 — here's your chance to give back &amp; request a song that will be queued. All very optional ofc ;)
+          </p>
+        </Panel>
 
         {/* ── Header ── */}
         <Panel style={{ padding:'0.875rem 1.5rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -326,61 +432,115 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
         </Panel>
 
         {/* ── Body grid ── */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr clamp(280px,29vw,360px)', gap:'1.25rem', minHeight:0 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) clamp(340px,40vw,480px)', gap:'1.25rem', minHeight:0 }}>
 
           {/* Leaderboard */}
           <Panel style={{ padding:'1.5rem', overflowY:'auto', display:'flex', flexDirection:'column' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.25rem' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:'0.625rem' }}>
-                <span style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'1.1rem', color:T.text, letterSpacing:'0.12em' }}>LEADERBOARD</span>
-              </div>
+              <span style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'1.1rem', color:T.text, letterSpacing:'0.12em' }}>LEADERBOARD</span>
               {timeAgo && <span style={{ fontSize:'0.65rem', color:T.textMuted }}>{timeAgo}</span>}
             </div>
 
             <div style={{ display:'flex', flexDirection:'column', flex:1 }}>
               {leaderboard.slice(0,10).map((entry, i) => {
-                const isFirst = i === 0;
                 const pct     = (entry.totalDKK / maxDKK) * 100;
                 const song    = entry.lastSong;
                 const songLbl = song?.songHidden ? 'Mystery song' : song?.song;
 
+                // Per-rank styles
+                const isFirst  = i === 0;
+                const isSecond = i === 1;
+                const isThird  = i === 2;
+
+                const rowStyle = isFirst ? {
+                  padding: '1.2rem 1rem',
+                  marginBottom: '0.75rem',
+                  borderRadius: 10,
+                  background: T.accentBg,
+                  border: `1px solid ${T.accentBorder}`,
+                  borderLeft: `4px solid ${T.accent}`,
+                  boxShadow: `0 0 28px rgba(240,212,74,0.12), 0 0 8px rgba(240,212,74,0.06)`,
+                  animation: 'fadeSlideIn 0.4s ease-out',
+                } : isSecond ? {
+                  padding: '0.75rem 1rem',
+                  marginBottom: '0.2rem',
+                  borderRadius: 10,
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid transparent',
+                  borderLeft: `3px solid ${T.silver}`,
+                  animation: 'fadeSlideIn 0.4s ease-out',
+                } : isThird ? {
+                  padding: '0.75rem 1rem',
+                  marginBottom: '0.2rem',
+                  borderRadius: 10,
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid transparent',
+                  borderLeft: `3px solid ${T.bronze}`,
+                  animation: 'fadeSlideIn 0.4s ease-out',
+                } : {
+                  padding: '0.6rem 0.875rem',
+                  marginBottom: '0.1rem',
+                  borderRadius: 10,
+                  background: 'transparent',
+                  border: '1px solid transparent',
+                  animation: 'fadeSlideIn 0.4s ease-out',
+                };
+
+                const nameColor  = isFirst ? T.accent : isSecond || isThird ? T.text : 'rgba(242,237,228,0.6)';
+                const rankColor  = isFirst ? T.accent : isSecond || isThird ? T.textSub : T.textMuted;
+                const barColor   = isFirst ? T.accent : isSecond || isThird ? 'rgba(242,237,228,0.28)' : 'rgba(242,237,228,0.1)';
+                const barHeight  = isFirst ? 2 : 1;
+
                 return (
-                  <div key={entry.name} style={{
-                    display:'flex', alignItems:'center', gap:'0.875rem',
-                    padding: isFirst ? '1rem 0.875rem' : '0.65rem 0.875rem',
-                    marginBottom: isFirst ? '0.625rem' : '0.125rem',
-                    borderRadius:10,
-                    background: isFirst ? T.accentBg : i < 3 ? 'rgba(255,255,255,0.03)' : 'transparent',
-                    border:`1px solid ${isFirst ? T.accentBorder : i < 3 ? T.border : 'transparent'}`,
-                    animation:'fadeSlideIn 0.4s ease-out',
-                  }}>
+                  <div key={entry.name} style={{ display:'flex', alignItems:'center', gap:'0.875rem', ...rowStyle }}>
                     {/* Rank */}
-                    <div style={{ width:30, textAlign:'right', flexShrink:0, fontFamily:"'DM Mono', monospace", fontWeight:500, fontSize: isFirst ? '1rem' : '0.8rem', color: isFirst ? T.accent : i < 3 ? T.textSub : T.textMuted }}>
+                    <div style={{
+                      width: 30, textAlign:'right', flexShrink:0,
+                      fontFamily:"'DM Mono', monospace", fontWeight:500,
+                      fontSize: isFirst ? '1.1rem' : '0.85rem',
+                      color: rankColor,
+                    }}>
                       {i + 1}
                     </div>
 
-                    <Avatar name={entry.name} size={isFirst ? 44 : 34}/>
+                    <Avatar name={entry.name} size={isFirst ? 48 : isSecond || isThird ? 38 : 34}/>
 
                     <div style={{ flex:1, minWidth:0 }}>
+                      {isFirst && (
+                        <div style={{
+                          fontSize: '0.6rem', letterSpacing: '0.22em',
+                          color: T.accent, fontVariant: 'small-caps',
+                          marginBottom: 5, opacity: 0.85,
+                        }}>
+                          THE LEGEND,
+                        </div>
+                      )}
                       <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-                        <span style={{ fontWeight: isFirst ? 700 : i < 3 ? 600 : 500, fontSize: isFirst ? 'clamp(1.05rem,1.7vw,1.3rem)' : 'clamp(0.88rem,1.2vw,1rem)', color: isFirst ? T.accent : i < 3 ? T.text : 'rgba(242,237,228,0.6)', letterSpacing:'-0.01em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                        <span style={{
+                          fontWeight: isFirst ? 800 : isSecond || isThird ? 600 : 500,
+                          fontSize: isFirst ? '2rem' : isSecond ? '1.18rem' : isThird ? '1.1rem' : '1rem',
+                          color: nameColor,
+                          letterSpacing: isFirst ? '-0.02em' : '-0.01em',
+                          whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                          lineHeight: 1.15,
+                        }}>
                           {entry.name}
                         </span>
-                        {entry.count > 1 && <span style={{ fontSize:'0.62rem', color:T.textSub, background:'rgba(255,255,255,0.07)', padding:'1px 6px', borderRadius:20 }}>{entry.count}×</span>}
+                        {entry.count > 1 && (
+                          <span style={{ fontSize:'0.62rem', color:T.textSub, background:'rgba(255,255,255,0.07)', padding:'1px 6px', borderRadius:20, flexShrink:0 }}>
+                            {entry.count}×
+                          </span>
+                        )}
                       </div>
                       {songLbl && (
-                        <div style={{ fontSize:'0.68rem', color:T.textSub, marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
+                        <div style={{ fontSize:'0.72rem', color:T.textSub, marginTop:3, display:'flex', alignItems:'center', gap:4 }}>
                           <span>{song?.songHidden ? '🔒' : '♫'}</span>
                           <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{songLbl}</span>
                         </div>
                       )}
-                      <div style={{ marginTop: isFirst ? 8 : 5, height: isFirst ? 2 : 1, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden' }}>
-                        <div style={{ width:`${pct}%`, height:'100%', borderRadius:2, background: isFirst ? T.accent : i < 3 ? 'rgba(242,237,228,0.28)' : 'rgba(242,237,228,0.1)', transition:'width 0.9s ease' }}/>
+                      <div style={{ marginTop: isFirst ? 10 : 6, height: barHeight, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden' }}>
+                        <div style={{ width:`${pct}%`, height:'100%', borderRadius:2, background: barColor, transition:'width 0.9s ease' }}/>
                       </div>
-                    </div>
-
-                    <div style={{ fontFamily:"'DM Mono', monospace", fontWeight:500, flexShrink:0, fontSize: isFirst ? 'clamp(1rem,1.5vw,1.15rem)' : 'clamp(0.82rem,1.1vw,0.92rem)', color: isFirst ? T.accent : i < 3 ? T.text : 'rgba(242,237,228,0.5)', whiteSpace:'nowrap' }}>
-                      {fmtDKK(entry.totalDKK)}
                     </div>
                   </div>
                 );
@@ -396,7 +556,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
           </Panel>
 
           {/* Right column */}
-          <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem', minHeight:0, overflowY:'auto' }}>
+          <div style={{ display:'flex', flexDirection:'column', gap:'1.1rem', minHeight:0, overflowY:'auto' }}>
 
             {/* Now Playing */}
             <Panel style={{ padding:'1.25rem 1.25rem 1.35rem' }}>
@@ -413,7 +573,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
                       </div>
                   }
                   <div style={{ minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:'clamp(0.92rem,1.4vw,1.05rem)', color:T.text, marginBottom:4, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>
+                    <div style={{ fontWeight:700, fontSize:'clamp(1.06rem,1.6vw,1.21rem)', color:T.text, marginBottom:4, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>
                       {nowPlaying?.name || (demoTrack?.songHidden ? 'Mystery Song' : demoTrack?.song)}
                     </div>
                     <div style={{ fontSize:'0.78rem', color:T.textSub }}>
@@ -424,6 +584,33 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
               ) : (
                 <div style={{ color:T.textMuted, fontSize:'0.82rem' }}>Nothing queued yet</div>
               )}
+            </Panel>
+
+            {/* Up Next */}
+            <Panel style={{ padding:'1.25rem' }}>
+              <SectionLabel>UP NEXT</SectionLabel>
+              {upNext.length === 0
+                ? <div style={{ color:T.textMuted, fontSize:'0.82rem' }}>No songs queued</div>
+                : upNext.map((d, idx) => (
+                    <div key={d.id} style={{
+                      display:'flex', gap:'0.7rem', alignItems:'flex-start',
+                      padding: idx > 0 ? '0.55rem 0 0' : '0',
+                      marginTop: idx > 0 ? 0 : 0,
+                      borderTop: idx > 0 ? `1px solid ${T.border}` : 'none',
+                      paddingTop: idx > 0 ? '0.55rem' : 0,
+                    }}>
+                      <div style={{ color:T.textMuted, fontFamily:"'DM Mono', monospace", fontSize:'0.72rem', width:16, flexShrink:0, paddingTop:2 }}>{idx + 1}</div>
+                      <div style={{ minWidth:0, flex:1 }}>
+                        <div style={{ fontSize:'0.88rem', color:T.text, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                          {d.songHidden ? '🔒 Mystery Song' : d.song}
+                        </div>
+                        <div style={{ fontSize:'0.72rem', color:T.textSub, marginTop:2 }}>
+                          requested by {d.name}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+              }
             </Panel>
 
             {/* Recent donations */}
@@ -442,14 +629,17 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
               <SectionLabel>DONATE &amp; GET YOUR SONG PLAYED</SectionLabel>
               <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.875rem' }}>
                 <div style={{ background:'white', padding:10, borderRadius:12 }}>
-                  <QRCodeSVG value={donateUrl} size={170} level="M"/>
+                  <QRCodeSVG value={donateUrl} size={220} level="M"/>
                 </div>
                 <div style={{ textAlign:'center' }}>
                   <div style={{ fontWeight:700, fontSize:'clamp(0.95rem,1.4vw,1.1rem)', color:T.text, marginBottom:4, wordBreak:'break-all' }}>
                     {donateDisp}
                   </div>
-                  <div style={{ fontSize:'0.75rem', color:T.textSub, marginBottom:8 }}>
+                  <div style={{ fontSize:'0.75rem', color:T.textSub, marginBottom:6 }}>
                     Scan to donate &amp; get your song played
+                  </div>
+                  <div style={{ fontSize:'0.72rem', color:T.accent, marginBottom:8, lineHeight:1.4 }}>
+                    Include a song you'd like to hear in your donation message — we'll queue it up!
                   </div>
                   {minDonation && (
                     <div style={{ display:'inline-block', background:T.accentBg, border:`1px solid ${T.accentBorder}`, borderRadius:20, padding:'3px 12px', fontSize:'0.72rem', color:T.accent, letterSpacing:'0.06em' }}>
@@ -467,13 +657,15 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
       <style>{`
         * { box-sizing: border-box; }
         body { margin: 0; }
-        @keyframes fadeIn      { from { opacity:0; }                         to { opacity:1; } }
-        @keyframes popIn       { from { opacity:0; transform:scale(0.8); }  to { opacity:1; transform:scale(1); } }
-        @keyframes fadeSlideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes pulse       { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-        @keyframes eq1         { from { height:4px; }  to { height:13px; } }
-        @keyframes eq2         { from { height:9px; }  to { height:4px;  } }
-        @keyframes eq3         { from { height:3px; }  to { height:12px; } }
+        @keyframes fadeIn       { from { opacity:0; }                              to { opacity:1; } }
+        @keyframes popIn        { from { opacity:0; transform:scale(0.8); }       to { opacity:1; transform:scale(1); } }
+        @keyframes fadeSlideIn  { from { opacity:0; transform:translateY(8px); }  to { opacity:1; transform:translateY(0); } }
+        @keyframes slideInLeft  { from { opacity:0; transform:translateX(-40px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes fadeOut      { from { opacity:1; }                              to { opacity:0; } }
+        @keyframes pulse        { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+        @keyframes eq1          { from { height:4px; }  to { height:13px; } }
+        @keyframes eq2          { from { height:9px; }  to { height:4px;  } }
+        @keyframes eq3          { from { height:3px; }  to { height:12px; } }
         ::-webkit-scrollbar            { width: 4px; }
         ::-webkit-scrollbar-track      { background: transparent; }
         ::-webkit-scrollbar-thumb      { background: rgba(255,255,255,0.1); border-radius: 4px; }
