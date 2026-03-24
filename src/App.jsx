@@ -8,16 +8,30 @@ const DANISH_NAMES = [
   'Rasmus','Freja','Mikkel','Astrid','Emil','Liv','Magnus','Clara',
   'Jonas','Nanna','Viktor','Karla',
 ];
-const DEMO_SONGS = [
-  'Bohemian Rhapsody','Dancing Queen — ABBA','Take On Me','Mr. Brightside',
-  'Smells Like Teen Spirit','Jolene','Billie Jean','Wonderwall',
-  'Sweet Caroline',"Don't Stop Believin'",'Barbie Girl — Aqua',"Livin' on a Prayer",
-  'Africa — Toto','Never Gonna Give You Up','September — Earth Wind & Fire',
-];
-const DEMO_MESSAGES = [
-  'Great party!','Love this event!','Keep it going!','Cheers 🍻',
-  'Amazing night!','','Best party ever!','Wooo!',"Let's gooo!",'',
-  'This is awesome!','For the good vibes','',
+// Each entry: { message, song, songHidden }
+// message = full raw donation text; song = extracted title (null if none)
+const DEMO_DONATIONS = [
+  // message + song request
+  { message: "Fedt party!! Kan I spille Dancing Queen? 🕺",              song: 'Dancing Queen — ABBA',           songHidden: false },
+  { message: "Love the vibe tonight — please throw on Mr. Brightside!", song: 'Mr. Brightside',                  songHidden: false },
+  { message: "Tak for en fed aften 🍻 sæt September på!",               song: 'September — Earth Wind & Fire',  songHidden: false },
+  { message: "Amazing night you guys!! Can we get Bohemian Rhapsody?",  song: 'Bohemian Rhapsody',               songHidden: false },
+  { message: "For min søster ❤️ please play Africa by Toto",            song: 'Africa — Toto',                   songHidden: false },
+  { message: "Best party in 174 ever!! Queue Sweet Caroline pleease",   song: 'Sweet Caroline',                  songHidden: false },
+  { message: "Tak for hyggen — spil Barbie Girl, det er et must 😂",    song: 'Barbie Girl — Aqua',              songHidden: false },
+  { message: "Great cause! Livin' on a Prayer to keep the energy up 🤘",song: "Livin' on a Prayer",              songHidden: false },
+  { message: "Wooo!! Don't Stop Believin please 🙌",                    song: "Don't Stop Believin'",            songHidden: false },
+  { message: "Cheers!! Can you surprise me with something good? 🎶",    song: 'Wonderwall',                      songHidden: true  },
+  { message: "Tak for sidst — overrask mig med noget fedt 🤫",          song: 'Take On Me',                      songHidden: true  },
+  // message only
+  { message: "Keep it going!! 🎉",     song: null, songHidden: false },
+  { message: "Fedt initiativ 👏",       song: null, songHidden: false },
+  { message: "For the 174 crew 🏠",    song: null, songHidden: false },
+  { message: "Tak for en fed aften!",  song: null, songHidden: false },
+  { message: "Cheers everyone 🍻",     song: null, songHidden: false },
+  { message: "Love this!! 🔥",         song: null, songHidden: false },
+  { message: "",                        song: null, songHidden: false },
+  { message: "",                        song: null, songHidden: false },
 ];
 const CURRENCIES = ['DKK','EUR','USD','GBP','SEK'];
 const KOFI_URL   = 'https://ko-fi.com/norrebros';
@@ -143,7 +157,8 @@ function Announcement({ donation, isTop, onDone }) {
           <div style={{ fontSize:'0.7rem', letterSpacing:'0.24em', color:T.textSub, marginBottom:14 }}>NEW #1 DONOR</div>
           <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(3.5rem,8vw,6rem)', color:T.accent, lineHeight:1, marginBottom:14, textShadow:'0 0 48px rgba(240,212,74,0.45)' }}>{donation.name}</div>
           <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'1.3rem', color:T.text, opacity:0.75 }}>{fmtDKK(donation.amountDKK)}</div>
-          {donation.message ? <div style={{ fontSize:'0.9rem', color:T.textSub, marginTop:12, fontStyle:'italic' }}>"{donation.message}"</div> : null}
+          {donation.message ? <div style={{ fontSize:'0.9rem', color:T.textSub, marginTop:12, fontStyle:'italic', maxWidth:440, lineHeight:1.5 }}>"{donation.message}"</div> : null}
+          {donation.song ? <div style={{ fontSize:'0.9rem', color:T.accent, marginTop:8, opacity:0.9 }}>♫ {donation.songHidden ? 'mystery song' : donation.song}</div> : null}
         </div>
       </div>
     );
@@ -154,8 +169,9 @@ function Announcement({ donation, isTop, onDone }) {
       <div style={{ textAlign:'center', animation:'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275)' }}>
         <div style={{ fontSize:'0.65rem', letterSpacing:'0.24em', color:T.textMuted, marginBottom:18 }}>NEW DONATION</div>
         <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(2.8rem,6vw,5rem)', color:T.text, lineHeight:1, marginBottom:10 }}>{donation.name}</div>
-        <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'1.5rem', color:T.accent, marginBottom: donation.message ? 14 : 0 }}>{fmtDKK(donation.amountDKK)}</div>
+        <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'1.5rem', color:T.accent, marginBottom: (donation.message || donation.song) ? 14 : 0 }}>{fmtDKK(donation.amountDKK)}</div>
         {donation.message ? <div style={{ fontSize:'0.9rem', color:T.textSub, fontStyle:'italic', maxWidth:440, lineHeight:1.5 }}>"{donation.message}"</div> : null}
+        {donation.song ? <div style={{ fontSize:'0.9rem', color:T.accent, marginTop:8, opacity:0.9 }}>♫ {donation.songHidden ? 'mystery song' : donation.song}</div> : null}
       </div>
     </div>
   );
@@ -292,9 +308,9 @@ function RecentItem({ donation: d, fresh }) {
     <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.4rem 0.6rem', borderRadius:8, background: fresh ? T.accentBg : 'transparent', border:`1px solid ${fresh ? T.accentBorder : 'transparent'}`, animation:'fadeSlideIn 0.35s ease-out' }}>
       <Avatar name={d.name} size={26}/>
       <div style={{ flex:1, minWidth:0 }}>
-        <span style={{ fontWeight:600, fontSize:'0.94rem', color: fresh ? T.accent : T.text }}>{d.name}</span>
-        {d.song && <span style={{ fontSize:'0.8rem', color:T.textSub, marginLeft:6 }}>♫ {d.songHidden ? 'mystery song' : d.song}</span>}
-        {!d.song && d.message && <span style={{ fontSize:'0.8rem', color:T.textSub, marginLeft:6, fontStyle:'italic' }}>"{d.message}"</span>}
+        <div style={{ fontWeight:600, fontSize:'0.94rem', color: fresh ? T.accent : T.text }}>{d.name}</div>
+        {d.message ? <div style={{ fontSize:'0.78rem', color:T.textSub, fontStyle:'italic', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>"{d.message}"</div> : null}
+        {d.song ? <div style={{ fontSize:'0.76rem', color:T.accent, opacity:0.85 }}>♫ {d.songHidden ? 'mystery song' : d.song}</div> : null}
       </div>
       <div style={{ textAlign:'right', flexShrink:0 }}>
         <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'0.92rem', color: fresh ? T.accent : T.text, whiteSpace:'nowrap' }}>{fmtDKK(d.amountDKK)}</div>
@@ -323,12 +339,8 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
     const currency = CURRENCIES[Math.floor(Math.random() * CURRENCIES.length)];
     const base     = 20 + Math.floor(Math.random() * 380);
     const amount   = currency === 'DKK' ? base : Math.round(base / (RATES[currency] || 1) * 100) / 100;
-    const hasSong  = Math.random() < 0.4;
-    const song     = hasSong ? DEMO_SONGS[Math.floor(Math.random() * DEMO_SONGS.length)] : null;
-    const message  = song
-      ? (Math.random() < 0.5 ? `Song: ${song}` : `🎵 ${song}`)
-      : DEMO_MESSAGES[Math.floor(Math.random() * DEMO_MESSAGES.length)];
-    return { id:demoIdRef.current++, name, message, song, songPlayed:false, songHidden:false, amount, currency, amountDKK:toDKK(amount,currency), timestamp:new Date().toISOString(), isPublic:true };
+    const preset   = DEMO_DONATIONS[Math.floor(Math.random() * DEMO_DONATIONS.length)];
+    return { id:demoIdRef.current++, name, message:preset.message, song:preset.song, songPlayed:false, songHidden:preset.songHidden, amount, currency, amountDKK:toDKK(amount,currency), timestamp:new Date().toISOString(), isPublic:true };
   }, []);
 
   useEffect(() => {
@@ -343,7 +355,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
     const id = setInterval(() => {
       setDonations(p => [...p, makeDemoDonation()]);
       setLastUpdated(new Date().toISOString());
-    }, 4000);
+    }, 9000);
     return () => clearInterval(id);
   }, [mode, makeDemoDonation]);
 
