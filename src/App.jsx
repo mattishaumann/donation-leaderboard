@@ -165,12 +165,12 @@ function Announcement({ donation, isTop, onDone }) {
     return (
       <div style={{ ...wrap, background:'rgba(10,8,5,0.94)' }}>
         <div style={{ textAlign:'center', animation: out ? 'none' : 'popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275)' }}>
-          <div style={{ fontSize:'0.65rem', letterSpacing:'0.22em', color:T.accent, fontVariant:'small-caps', marginBottom:8 }}>The Legend,</div>
-          <div style={{ fontSize:'0.7rem', letterSpacing:'0.24em', color:T.textSub, marginBottom:14 }}>NEW #1 DONOR</div>
-          <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(3.5rem,8vw,6rem)', color:T.accent, lineHeight:1, marginBottom:14, textShadow:'0 0 48px rgba(240,212,74,0.45)' }}>{donation.name}</div>
+          <div style={{ fontSize:'1rem', letterSpacing:'0.22em', color:T.accent, fontVariant:'small-caps', marginBottom:10 }}>The Legend,</div>
+          <div style={{ fontSize:'0.85rem', letterSpacing:'0.24em', color:T.textSub, marginBottom:16 }}>NEW #1 DONOR</div>
+          <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(4.5rem,9vw,7.5rem)', color:T.accent, lineHeight:1, marginBottom:16, textShadow:'0 0 48px rgba(240,212,74,0.45)' }}>{donation.name}</div>
           <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'1.3rem', color:T.text, opacity:0.75 }}>{fmtDKK(donation.amountDKK)}</div>
           {donation.message ? <div style={{ fontSize:'0.9rem', color:T.textSub, marginTop:12, fontStyle:'italic', maxWidth:440, lineHeight:1.5 }}>"{donation.message}"</div> : null}
-          {donation.song ? <div style={{ fontSize:'0.9rem', color:T.accent, marginTop:8, opacity:0.9 }}>♫ {donation.songHidden ? 'mystery song' : donation.song}</div> : null}
+          {donation.song && !donation.songHidden ? <div style={{ fontSize:'0.9rem', color:T.accent, marginTop:8, opacity:0.9 }}>♫ {donation.song}</div> : null}
         </div>
       </div>
     );
@@ -179,11 +179,11 @@ function Announcement({ donation, isTop, onDone }) {
   return (
     <div style={{ ...wrap, background:'rgba(10,8,5,0.88)' }}>
       <div style={{ textAlign:'center', animation: out ? 'none' : 'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275)' }}>
-        <div style={{ fontSize:'0.65rem', letterSpacing:'0.24em', color:T.textMuted, marginBottom:18 }}>NEW DONATION</div>
-        <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(2.8rem,6vw,5rem)', color:T.text, lineHeight:1, marginBottom:10 }}>{donation.name}</div>
-        <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'1.5rem', color:T.accent, marginBottom: (donation.message || donation.song) ? 14 : 0 }}>{fmtDKK(donation.amountDKK)}</div>
+        <div style={{ fontSize:'0.75rem', letterSpacing:'0.24em', color:T.textMuted, marginBottom:18 }}>NEW DONATION</div>
+        <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(3.2rem,7vw,6rem)', color:T.text, lineHeight:1, marginBottom:10 }}>{donation.name}</div>
+        <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'1.5rem', color:T.accent, marginBottom: (donation.message || (donation.song && !donation.songHidden)) ? 14 : 0 }}>{fmtDKK(donation.amountDKK)}</div>
         {donation.message ? <div style={{ fontSize:'0.9rem', color:T.textSub, fontStyle:'italic', maxWidth:440, lineHeight:1.5 }}>"{donation.message}"</div> : null}
-        {donation.song ? <div style={{ fontSize:'0.9rem', color:T.accent, marginTop:8, opacity:0.9 }}>♫ {donation.songHidden ? 'mystery song' : donation.song}</div> : null}
+        {donation.song && !donation.songHidden ? <div style={{ fontSize:'0.9rem', color:T.accent, marginTop:8, opacity:0.9 }}>♫ {donation.song}</div> : null}
       </div>
     </div>
   );
@@ -322,7 +322,7 @@ function RecentItem({ donation: d, fresh }) {
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontWeight:600, fontSize:'0.94rem', color: fresh ? T.accent : T.text }}>{d.name}</div>
         {d.message ? <div style={{ fontSize:'0.78rem', color:T.textSub, fontStyle:'italic', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>"{d.message}"</div> : null}
-        {d.song ? <div style={{ fontSize:'0.76rem', color:T.accent, opacity:0.85 }}>♫ {d.songHidden ? 'mystery song' : d.song}</div> : null}
+        {d.song && !d.songHidden ? <div style={{ fontSize:'0.76rem', color:T.accent, opacity:0.85 }}>♫ {d.song}</div> : null}
       </div>
       <div style={{ textAlign:'right', flexShrink:0 }}>
         <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'0.92rem', color: fresh ? T.accent : T.text, whiteSpace:'nowrap' }}>{fmtDKK(d.amountDKK)}</div>
@@ -563,9 +563,9 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
                     <div style={{ flex:1, minWidth:0 }}>
                       {isFirst && (
                         <div style={{
-                          fontSize: '0.6rem', letterSpacing: '0.22em',
+                          fontSize: '0.82rem', letterSpacing: '0.22em',
                           color: T.accent, fontVariant: 'small-caps',
-                          marginBottom: 5, opacity: 0.85,
+                          marginBottom: 5, opacity: 0.9,
                         }}>
                           THE LEGEND,
                         </div>
@@ -630,8 +630,11 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
                   <div style={{ fontSize:'0.75rem', color:T.textSub, marginBottom:6 }}>
                     Scan to donate &amp; get your song played
                   </div>
-                  <div style={{ fontSize:'0.88rem', color:T.accent, marginBottom:8, lineHeight:1.4 }}>
+                  <div style={{ fontSize:'0.88rem', color:T.accent, marginBottom:6, lineHeight:1.4 }}>
                     Include a song you'd like to hear in your donation message — we'll queue it up!
+                  </div>
+                  <div style={{ fontSize:'0.78rem', color:T.textSub, marginBottom:8, lineHeight:1.4 }}>
+                    Want to keep it a surprise? Add "don't show the song" and it'll appear as a mystery until it plays 🎭
                   </div>
                   {minDonation && (
                     <div style={{ display:'inline-block', background:T.accentBg, border:`1px solid ${T.accentBorder}`, borderRadius:20, padding:'3px 12px', fontSize:'0.72rem', color:T.accent, letterSpacing:'0.06em' }}>
@@ -653,12 +656,12 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
                   {nowPlaying?.art
                     ? <img src={nowPlaying.art} alt="" style={{ width:54, height:54, borderRadius:7, flexShrink:0, objectFit:'cover' }}/>
                     : <div style={{ width:54, height:54, borderRadius:7, flexShrink:0, background:'rgba(255,255,255,0.06)', border:`1px solid ${T.border}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.4rem' }}>
-                        {demoTrack?.songHidden ? '🔒' : '♫'}
+                        ♫
                       </div>
                   }
                   <div style={{ minWidth:0 }}>
                     <div style={{ fontWeight:700, fontSize:'clamp(1.06rem,1.6vw,1.21rem)', color:T.text, marginBottom:4, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>
-                      {nowPlaying?.name || (demoTrack?.songHidden ? 'Mystery Song' : demoTrack?.song)}
+                      {nowPlaying?.name || demoTrack?.song}
                     </div>
                     <div style={{ fontSize:'0.78rem', color:T.textSub }}>
                       {nowPlaying?.artist || (demoTrack ? `Requested by ${demoTrack.name}` : '')}
