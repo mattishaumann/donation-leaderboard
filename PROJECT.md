@@ -1,10 +1,14 @@
-# Donation Leaderboard — Project Reference
+# Donation Leaderboard - Project Reference
 
 ## What it is
 
-A real-time party donation leaderboard built for live events. Guests donate via Ko-fi, optionally include a song request in their message, and the app displays a ranked leaderboard, auto-queues songs on Spotify, and shows a QR code so more guests can donate. It runs locally on the DJ/host's laptop and is displayed on a screen at the venue.
+A real-time party donation leaderboard built for live events at **Nørrebros** (Copenhagen). Guests donate via Ko-fi, optionally include a song request in their message, and the app:
+- Displays a ranked leaderboard (by accumulated DKK)
+- Shows a full-screen announcement for every new donation
+- Auto-queues songs on Spotify using AI to extract requests from messages
+- Shows a QR code so guests can donate on the spot
 
-The event this was built for is **Nørrebros** (Copenhagen). The Ko-fi page is `https://ko-fi.com/norrebros`.
+Runs locally on the host/DJ's laptop, displayed on a venue screen. Ko-fi page: `https://ko-fi.com/norrebros`.
 
 ---
 
@@ -12,12 +16,12 @@ The event this was built for is **Nørrebros** (Copenhagen). The Ko-fi page is `
 
 | Layer | Tech |
 |---|---|
-| Frontend | React 18, Vite 5 |
+| Frontend | React 18, Vite 5, all inline styles |
 | Backend | Node.js (ESM), Express 4 |
 | Fonts | Bebas Neue, Space Grotesk, DM Mono (Google Fonts) |
 | QR codes | `qrcode.react` |
 | Song extraction AI | Gemini 2.0 Flash (primary), GPT-4o-mini (fallback) |
-| Donation platform | Ko-fi webhook |
+| Donations | Ko-fi webhook |
 | Music | Spotify Web API |
 
 ---
@@ -26,15 +30,17 @@ The event this was built for is **Nørrebros** (Copenhagen). The Ko-fi page is `
 
 ```
 donation-leaderboard-main/
-├── server.js          # Express backend — all API, webhooks, Spotify, AI
+├── server.js          # Express backend - all API, webhooks, Spotify, AI
 ├── src/
 │   ├── App.jsx        # Entire React frontend (single file)
 │   └── main.jsx       # React entry point
 ├── public/
 │   └── bg.png         # Background image (dark photo of a building)
-├── index.html         # HTML shell — loads Google Fonts + Tailwind CDN
-├── vite.config.js     # Vite config — proxies /api and /webhook to :3000
+├── index.html         # HTML shell - loads Google Fonts
+├── vite.config.js     # Vite config - proxies /api and /webhook to :3000
 ├── package.json       # Scripts and dependencies
+├── README.md          # Setup and usage docs
+├── PROJECT.md         # This file - technical reference for AI/dev context
 └── .env               # Secrets (not committed)
 ```
 
@@ -53,16 +59,16 @@ npm run build
 npm start   # serves built dist/ from :3000
 ```
 
-After starting, connect Spotify by visiting: `http://localhost:3000/auth/spotify`
+After starting, connect Spotify: `http://localhost:3000/auth/spotify`
 
 ---
 
 ## Environment variables (`.env`)
 
 ```
-KOFI_TOKEN=              # Ko-fi webhook verification token (optional but recommended)
-GEMINI_API_KEY=          # Google Gemini API key (primary AI for song extraction)
-OPENAI_API_KEY=          # OpenAI API key (fallback AI for song extraction)
+KOFI_TOKEN=              # Ko-fi webhook verification token (optional)
+GEMINI_API_KEY=          # Google Gemini API key (primary AI)
+OPENAI_API_KEY=          # OpenAI API key (fallback AI)
 SPOTIFY_CLIENT_ID=       # Spotify app client ID
 SPOTIFY_CLIENT_SECRET=   # Spotify app client secret
 ```
@@ -71,7 +77,7 @@ SPOTIFY_CLIENT_SECRET=   # Spotify app client secret
 
 ## Backend (`server.js`)
 
-All state is **in-memory** — donations are stored in a `donations[]` array and reset when the server restarts. There is no database.
+All state is **in-memory** - no database. Donations array resets on server restart. This is intentional for single-night events.
 
 ### Donation object shape
 
@@ -81,14 +87,14 @@ All state is **in-memory** — donations are stored in a `donations[]` array and
   kofiId: string,          // Ko-fi transaction ID
   name: string,            // Donor name
   message: string,         // Raw donation message
-  song: string | null,     // Extracted song label, e.g. "Bohemian Rhapsody — Queen"
-  songHidden: boolean,     // True if donor asked to keep it a surprise
+  song: string | null,     // Extracted song label e.g. "Bohemian Rhapsody - Queen"
+  songHidden: boolean,     // True if donor asked to hide the song (mystery)
   songPlayed: boolean,     // True once Spotify has played it (auto-detected)
   amount: number,          // Original amount in original currency
   currency: string,        // e.g. "DKK", "EUR"
   amountDKK: number,       // Converted to DKK for leaderboard sorting
   timestamp: string,       // ISO string
-  isPublic: boolean,       // From Ko-fi — if false, message is hidden
+  isPublic: boolean,       // From Ko-fi - if false, message is hidden
 }
 ```
 
@@ -103,17 +109,17 @@ Hardcoded rates in both `server.js` and `App.jsx`:
 
 When a Ko-fi donation arrives with a message, `extractSong()` is called:
 1. Sends message to **Gemini 2.0 Flash** with a strict JSON-only prompt
-2. If Gemini fails, falls back to **GPT-4o-mini**
+2. If Gemini fails or quota exceeded, falls back to **GPT-4o-mini**
 3. Returns `{ song, artist, hidden }` or `null` if no song found
-4. The `hidden` flag is set if the donor uses words like "surprise", "skjult", "hemmeligt" (Danish for secret/hidden)
+4. `hidden: true` is set if the donor uses words like "surprise", "don't show", "skjult", "hemmeligt"
 
 ### Spotify integration
 
-OAuth flow: `GET /auth/spotify` → Spotify login → callback stores access + refresh tokens in memory.
+OAuth flow: `GET /auth/spotify` -> Spotify login -> callback stores access + refresh tokens in memory. Tokens are NOT persisted to disk - re-auth required after server restart.
 
-Tokens auto-refresh before expiry. Scopes: `user-modify-playback-state user-read-playback-state user-read-currently-playing`.
+Scopes: `user-modify-playback-state user-read-playback-state user-read-currently-playing`
 
-A `setInterval` runs every 5 seconds to poll Spotify's currently-playing endpoint and auto-mark donation songs as `songPlayed = true` when they come on. The match is fuzzy — first word of track name vs. first word of the stored song label.
+A `setInterval` runs every 5 seconds to poll Spotify's currently-playing endpoint and auto-mark donation songs as `songPlayed = true` when they come on. Match is fuzzy (first word of track name vs. first word of stored song label).
 
 ### API endpoints
 
@@ -132,69 +138,106 @@ A `setInterval` runs every 5 seconds to poll Spotify's currently-playing endpoin
 
 ## Frontend (`src/App.jsx`)
 
-Single-file React app — no router, no state management library, inline styles throughout using a design token object `T`.
-
-### Screens
-
-1. **SetupScreen** — shown on launch. Configures event name, Ko-fi URL, minimum donation amount, and mode (demo or live). Clicking "Launch →" moves to the leaderboard.
-
-2. **Leaderboard** — the main display screen.
+Single-file React app - no router, no state management library. All styling is inline using a design token object `T`. No Tailwind (CDN tag in index.html is unused legacy).
 
 ### Design tokens (`T` object)
 
-All colors are defined in one object at the top of `App.jsx`:
-- Dark warm background (`#0a0805`)
-- Warm yellow accent (`#f0d44a`)
-- Glass panels with `backdrop-filter: blur(40px)`
-- Text colors are warm off-white (`#f2ede4`) at various opacities
+```js
+const T = {
+  pageBg:      '#0a0805',               // very dark warm brown
+  glass:       'rgba(6,4,2,0.28)',      // glass panel background
+  border:      'rgba(255,255,255,0.14)',
+  text:        '#f2ede4',               // warm off-white
+  textSub:     'rgba(242,237,228,0.5)',
+  textMuted:   'rgba(242,237,228,0.22)',
+  accent:      '#f0d44a',               // warm yellow - main accent
+  accentBg:    'rgba(240,212,74,0.1)',
+  silver:      '#b0b8c8',               // used for #2 leaderboard border
+  bronze:      '#b87333',               // used for #3 leaderboard border
+  avatars:     [...],                   // 8 muted colours for avatar circles
+}
+```
+
+### Screens
+
+1. **SetupScreen** - configures event name, Ko-fi URL, min donation, mode (demo/live). Clicking "Launch ->" enters the leaderboard.
+2. **Leaderboard** - the main display screen.
 
 ### Leaderboard logic
 
-Donations are grouped by donor name. Each donor's `totalDKK` is the sum of all their donations converted to DKK. The leaderboard sorts by `totalDKK` descending and shows top 10. A bar under each name shows their relative share vs. the #1 donor.
+Donations are grouped by donor name. `totalDKK` = sum of all their donations converted to DKK. Sorted descending, top 10 shown. Each row has a relative progress bar vs. the #1 donor total.
 
-When the #1 donor changes, a **Celebration overlay** fires for 3.2 seconds showing the new leader's name and total in large type.
+**Podium styling:**
+- #1 - "THE LEGEND," label (small caps), 2.4rem name, 4px gold left border, gold glow `box-shadow`, crown avatar (👑)
+- #2 - silver left border, slightly larger name
+- #3 - bronze left border
+- Others - normal styling
 
 ### Modes
 
-- **Demo mode**: Seeds 14 random donations on load, adds a new random one every 4 seconds. No server calls needed. Good for testing/showing the UI without real data.
-- **Live mode**: Polls `GET /api/donations` every 3 seconds. Polls `GET /api/spotify/queue` every 5 seconds.
+- **Demo mode** - seeds 14 donations on load from `DEMO_DONATIONS` presets (realistic Danish/English messages with embedded song requests). Adds 1-2 new donations every 16 seconds (~25% chance of double). No server calls needed.
+- **Live mode** - polls `GET /api/donations` every 3s. Polls `GET /api/spotify/queue` every 5s.
+
+### Mystery song behaviour
+
+When `songHidden: true`:
+- **Up Next panel** - shown as "mystery song"
+- **Leaderboard last song** - shown as "Mystery song"
+- **Recent Donations** - song line hidden entirely (not shown)
+- **Announcement overlay** - song line hidden entirely
+- **Now Playing** - song name is REVEALED (this is the intended reveal moment)
+
+The AI sets `hidden: true` when donor message contains words like: "don't show", "surprise", "secret", "skjult", "hemmeligt".
+
+### Announcement overlay
+
+Every new donation triggers a full-screen overlay. Announcements queue up if multiple arrive simultaneously - they play one by one with a gap in between.
+
+Sequence: **fade in (0.35s)** -> **hold** -> **fade out (0.6s)** -> leaderboard visible -> next announcement
+
+- Regular donation: 3.6s hold
+- New #1 donor: 5.2s hold, gold name with glow, "The Legend," + "NEW #1 DONOR" labels
 
 ### Right column panels (top to bottom)
 
-1. **Now Playing** — shows Spotify's currently playing track (with album art thumbnail) in live mode, or the first unplayed requested song in demo mode. Has animated equalizer bars when active.
-2. **Recent Donations** — last 6 donations, newest highlighted in accent color.
-3. **Donate** — QR code generated from the Ko-fi URL, URL text, and minimum donation badge.
+1. **Donate** - QR code (220px), Ko-fi URL, instructions, mystery song hint, min DKK badge
+2. **Now Playing** - Spotify current track with album art (live) or first unplayed requested song (demo). Always reveals song name, even for previously hidden songs
+3. **Up Next** - next 3 unplayed donor-requested songs with requester name. Hidden songs shown as "mystery song"
+4. **Recent Donations** - last 6 donations, newest highlighted in accent colour
 
 ### Key React components
 
 | Component | Purpose |
 |---|---|
-| `App` | Root — manages setup vs. leaderboard screen |
+| `App` | Root - manages setup vs. leaderboard screen |
 | `SetupScreen` | Launch config form |
-| `Leaderboard` | Main dashboard, all data fetching |
-| `Celebration` | Full-screen #1 donor takeover overlay |
+| `Leaderboard` | Main dashboard, all data fetching and state |
+| `Announcement` | Full-screen donation overlay (queued, fade in/out) |
+| `DonationToast` | Small bottom-left slide-in notification per donation |
+| `FullscreenButton` | Fixed top-right fullscreen toggle |
 | `RecentItem` | Single row in recent donations list |
-| `Avatar` | Colored circle with first letter, color derived from name hash |
-| `EqBars` | Animated equalizer bars (3 bars, CSS keyframe animation) |
+| `Avatar` | Coloured circle with random hat emoji; crown for #1 |
+| `EqBars` | Animated 3-bar equalizer (CSS keyframes) |
 | `Panel` | Glass-morphism wrapper div |
 | `SectionLabel` | Small caps section heading |
-| `useTimeAgo` | Hook — returns "just now / 30s ago / 5m ago" string, updates every 5s |
+| `useTimeAgo` | Hook - returns "just now / 30s ago / 5m ago", updates every 5s |
 
----
+### Demo donation presets (`DEMO_DONATIONS`)
 
-## Ko-fi webhook setup
-
-In Ko-fi settings → API, set the webhook URL to your public URL + `/webhook/kofi`. For local dev, use ngrok or similar to expose port 3000. The `KOFI_TOKEN` in `.env` should match the verification token shown in Ko-fi settings.
-
-Ko-fi sends a `POST` with `application/x-www-form-urlencoded` body where the payload is a JSON string in a field called `data`. Only events with `type === "Donation"` are processed; others are acknowledged and skipped.
+Array of `{ message, song, songHidden }` objects with realistic party messages. Includes:
+- Combined message + song request (e.g. "Fedt party!! Kan I spille Dancing Queen? 🕺")
+- Message-only donations
+- Hidden/mystery song requests
+- Mix of Danish and English
 
 ---
 
 ## Known design decisions / gotchas
 
-- **No persistence** — all data lives in memory. Restarting the server wipes donations. This is intentional for live events where you want a clean start each night.
-- **Spotify token is also in-memory** — if the server restarts, you need to re-authorize via `/auth/spotify`. Tokens are not saved to disk.
-- **Song matching for auto-played is fuzzy** — it compares only the first word of the track name to avoid missing matches due to punctuation/subtitle differences. Can produce false positives.
-- **Currency rates are hardcoded** — DKK, EUR, USD, GBP, SEK, NOK. Any other currency falls back to a 1:1 rate.
-- **Vite proxy** — in dev, Vite proxies `/api` and `/webhook` paths to `localhost:3000`, so the frontend doesn't need to know the backend port.
-- **Tailwind is loaded via CDN** in `index.html` but is not actually used in `App.jsx` — all styling is inline. It's a leftover and can be removed.
+- **No persistence** - all data lives in memory. Restarting the server wipes donations. Intentional for single-night events.
+- **Spotify token in-memory** - re-authorize via `/auth/spotify` after each server restart.
+- **Song matching is fuzzy** - compares only the first word of track name vs. stored song label. Can produce false positives but avoids missing matches due to subtitles/punctuation.
+- **Currency rates hardcoded** - any unlisted currency falls back to 1:1 rate with DKK.
+- **Vite proxy** - in dev, `/api` and `/webhook` paths proxy to `localhost:3000`. In production, frontend is served by Express directly.
+- **Announcement queue** - uses a `useRef` array. New donations push to queue; if nothing is showing, display immediately; on `onDone`, shift next from queue. The `onDone` callback uses a ref internally to avoid stale closure issues with `useEffect`.
+- **No em dashes** - all visible text uses regular hyphens (`-`), not em dashes (`-`).
