@@ -328,11 +328,12 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
   const [spotifyQueue, setSpotifyQueue] = useState({ connected:false, currently_playing:null, is_playing:false, queue:[] });
   const [toast,        setToast]        = useState(null);
 
-  const prevTopRef     = useRef(null);
-  const demoIdRef      = useRef(100);
-  const seededRef      = useRef(false);
-  const knownIdsRef    = useRef(new Set());
-  const initializedRef = useRef(false);
+  const prevTopRef          = useRef(null);
+  const demoIdRef           = useRef(100);
+  const seededRef           = useRef(false);
+  const knownIdsRef         = useRef(new Set());
+  const initializedRef      = useRef(false);
+  const announcementQueue   = useRef([]);
 
   const makeDemoDonation = useCallback(() => {
     const name     = DANISH_NAMES[Math.floor(Math.random() * DANISH_NAMES.length)];
@@ -393,7 +394,8 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
       const newTop = Object.entries(g).sort((a,b) => b[1]-a[1])[0]?.[0] || null;
       const isTop  = newTop !== prevTopRef.current;
       prevTopRef.current = newTop;
-      setAnnouncement({ donation: latest, isTop });
+      announcementQueue.current.push({ donation: latest, isTop });
+      setAnnouncement(cur => cur !== null ? cur : announcementQueue.current.shift());
       newest.forEach(d => knownIdsRef.current.add(d.id));
     }
   }, [donations]);
@@ -429,7 +431,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
       <div style={{ position:'fixed', inset:0, backgroundImage:'url(/bg.png)', backgroundSize:'cover', backgroundPosition:'center bottom', zIndex:0 }}/>
       <div style={{ position:'fixed', inset:0, background:'linear-gradient(180deg, rgba(8,6,3,0.35) 0%, rgba(8,6,3,0.1) 30%, rgba(8,6,3,0.1) 70%, rgba(8,6,3,0.4) 100%)', zIndex:1 }}/>
 
-      {announcement && <Announcement key={announcement.donation.id} donation={announcement.donation} isTop={announcement.isTop} onDone={() => setAnnouncement(null)}/>}
+      {announcement && <Announcement key={announcement.donation.id} donation={announcement.donation} isTop={announcement.isTop} onDone={() => setAnnouncement(announcementQueue.current.shift() ?? null)}/>}
       {toast && <DonationToast key={toast.id} donation={toast} onDone={() => setToast(null)}/>}
       <FullscreenButton/>
 
