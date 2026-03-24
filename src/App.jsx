@@ -12,17 +12,17 @@ const DANISH_NAMES = [
 // message = full raw donation text; song = extracted title (null if none)
 const DEMO_DONATIONS = [
   // message + song request
-  { message: "Fedt party!! Kan I spille Dancing Queen? 🕺",              song: 'Dancing Queen — ABBA',           songHidden: false },
-  { message: "Love the vibe tonight — please throw on Mr. Brightside!", song: 'Mr. Brightside',                  songHidden: false },
-  { message: "Tak for en fed aften 🍻 sæt September på!",               song: 'September — Earth Wind & Fire',  songHidden: false },
+  { message: "Fedt party!! Kan I spille Dancing Queen? 🕺",              song: 'Dancing Queen - ABBA',           songHidden: false },
+  { message: "Love the vibe tonight - please throw on Mr. Brightside!", song: 'Mr. Brightside',                  songHidden: false },
+  { message: "Tak for en fed aften 🍻 sæt September på!",               song: 'September - Earth Wind & Fire',  songHidden: false },
   { message: "Amazing night you guys!! Can we get Bohemian Rhapsody?",  song: 'Bohemian Rhapsody',               songHidden: false },
-  { message: "For min søster ❤️ please play Africa by Toto",            song: 'Africa — Toto',                   songHidden: false },
+  { message: "For min søster ❤️ please play Africa by Toto",            song: 'Africa - Toto',                   songHidden: false },
   { message: "Best party in 174 ever!! Queue Sweet Caroline pleease",   song: 'Sweet Caroline',                  songHidden: false },
-  { message: "Tak for hyggen — spil Barbie Girl, det er et must 😂",    song: 'Barbie Girl — Aqua',              songHidden: false },
+  { message: "Tak for hyggen - spil Barbie Girl, det er et must 😂",    song: 'Barbie Girl - Aqua',              songHidden: false },
   { message: "Great cause! Livin' on a Prayer to keep the energy up 🤘",song: "Livin' on a Prayer",              songHidden: false },
   { message: "Wooo!! Don't Stop Believin please 🙌",                    song: "Don't Stop Believin'",            songHidden: false },
   { message: "Cheers!! Can you surprise me with something good? 🎶",    song: 'Wonderwall',                      songHidden: true  },
-  { message: "Tak for sidst — overrask mig med noget fedt 🤫",          song: 'Take On Me',                      songHidden: true  },
+  { message: "Tak for sidst - overrask mig med noget fedt 🤫",          song: 'Take On Me',                      songHidden: true  },
   // message only
   { message: "Keep it going!! 🎉",     song: null, songHidden: false },
   { message: "Fedt initiativ 👏",       song: null, songHidden: false },
@@ -388,7 +388,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
     poll(); const id = setInterval(poll, 5000); return () => clearInterval(id);
   }, [mode]);
 
-  // Detect new donations — trigger toast + full-screen announcement
+  // Detect new donations - trigger toast + full-screen announcement
   useEffect(() => {
     if (donations.length === 0) return;
     if (!initializedRef.current) {
@@ -457,7 +457,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
         {/* ── Banner ── */}
         <Panel style={{ padding:'0.65rem 1.4rem' }}>
           <p style={{ margin:0, fontFamily:"'Space Grotesk', sans-serif", fontSize:'0.94rem', color:'rgba(242,237,228,0.42)', lineHeight:1.5 }}>
-            We spent quite a lot of time cleaning and buying beers in the last parties in the 174 — here's your chance to give back &amp; request a song that will be queued. All very optional ofc ;)
+            We spent quite a lot of time cleaning and buying beers in the last parties in the 174 - here's your chance to give back &amp; request a song that will be queued. All very optional ofc ;)
           </p>
         </Panel>
 
@@ -597,7 +597,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
                         <div style={{ width:`${pct}%`, height:'100%', borderRadius:2, background: barColor, transition:'width 0.9s ease' }}/>
                       </div>
                     </div>
-                    <div style={{ fontFamily:"'DM Mono', monospace", fontWeight:500, flexShrink:0, fontSize: isFirst ? 'clamp(1rem,1.5vw,1.15rem)' : '0.85rem', color: isFirst ? T.accent : isSecond || isThird ? T.text : 'rgba(242,237,228,0.45)', whiteSpace:'nowrap' }}>
+                    <div style={{ fontFamily:"'DM Mono', monospace", fontWeight:500, flexShrink:0, fontSize: isFirst ? 'clamp(1.3rem,1.8vw,1.5rem)' : isSecond || isThird ? '1.1rem' : '1rem', color: isFirst ? T.accent : isSecond || isThird ? T.text : 'rgba(242,237,228,0.45)', whiteSpace:'nowrap' }}>
                       {fmtDKK(entry.totalDKK)}
                     </div>
                   </div>
@@ -606,7 +606,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
 
               {leaderboard.length === 0 && (
                 <div style={{ textAlign:'center', flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:T.textMuted }}>
-                  <div style={{ fontSize:'2rem', marginBottom:10 }}>—</div>
+                  <div style={{ fontSize:'2rem', marginBottom:10 }}>-</div>
                   <div style={{ fontSize:'0.82rem', letterSpacing:'0.08em' }}>Waiting for donations</div>
                 </div>
               )}
@@ -631,7 +631,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
                     Scan to donate &amp; get your song played
                   </div>
                   <div style={{ fontSize:'0.88rem', color:T.accent, marginBottom:6, lineHeight:1.4 }}>
-                    Include a song you'd like to hear in your donation message — we'll queue it up!
+                    Include a song you'd like to hear in your donation message - we'll queue it up!
                   </div>
                   <div style={{ fontSize:'0.78rem', color:T.textSub, marginBottom:8, lineHeight:1.4 }}>
                     Want to keep it a surprise? Add "don't show the song" and it'll appear as a mystery until it plays 🎭
@@ -702,7 +702,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
             <Panel style={{ padding:'1.25rem', flex:'1 1 auto', overflowY:'auto', minHeight:0 }}>
               <SectionLabel>RECENT DONATIONS</SectionLabel>
               {recent.length === 0
-                ? <div style={{ color:T.textMuted, fontSize:'0.82rem' }}>—</div>
+                ? <div style={{ color:T.textMuted, fontSize:'0.82rem' }}>-</div>
                 : <div style={{ display:'flex', flexDirection:'column', gap:'0.375rem' }}>
                     {recent.map((d,i) => <RecentItem key={d.id} donation={d} fresh={i===0}/>)}
                   </div>
