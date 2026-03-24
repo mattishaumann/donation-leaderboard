@@ -128,15 +128,34 @@ function SectionLabel({ children }) {
   );
 }
 
-// ─── Celebration overlay ──────────────────────────────────────────────────────
-function Celebration({ name, total, onDone }) {
-  useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
+// ─── Announcement overlay (every donation; extra special for new #1) ──────────
+function Announcement({ donation, isTop, onDone }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, isTop ? 3800 : 2800);
+    return () => clearTimeout(t);
+  }, [onDone, isTop]);
+
+  if (isTop) {
+    return (
+      <div style={{ position:'fixed', inset:0, zIndex:99, background:'rgba(10,8,5,0.94)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.35s' }}>
+        <div style={{ textAlign:'center', animation:'popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275)' }}>
+          <div style={{ fontSize:'0.65rem', letterSpacing:'0.22em', color:T.accent, fontVariant:'small-caps', marginBottom:8 }}>The Legend,</div>
+          <div style={{ fontSize:'0.7rem', letterSpacing:'0.24em', color:T.textSub, marginBottom:14 }}>NEW #1 DONOR</div>
+          <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(3.5rem,8vw,6rem)', color:T.accent, lineHeight:1, marginBottom:14, textShadow:'0 0 48px rgba(240,212,74,0.45)' }}>{donation.name}</div>
+          <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'1.3rem', color:T.text, opacity:0.75 }}>{fmtDKK(donation.amountDKK)}</div>
+          {donation.message ? <div style={{ fontSize:'0.9rem', color:T.textSub, marginTop:12, fontStyle:'italic' }}>"{donation.message}"</div> : null}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:99, background:'rgba(10,8,5,0.92)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.35s' }}>
-      <div style={{ textAlign:'center', animation:'popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275)' }}>
-        <div style={{ fontSize:'0.7rem', letterSpacing:'0.24em', color:T.textSub, marginBottom:14 }}>NEW #1 DONOR</div>
-        <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(3.5rem,8vw,6rem)', color:T.accent, lineHeight:1, marginBottom:12 }}>{name}</div>
-        <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'1.6rem', color:T.text, opacity:0.85 }}>{fmtDKK(total)}</div>
+    <div style={{ position:'fixed', inset:0, zIndex:99, background:'rgba(10,8,5,0.88)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.3s' }}>
+      <div style={{ textAlign:'center', animation:'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275)' }}>
+        <div style={{ fontSize:'0.65rem', letterSpacing:'0.24em', color:T.textMuted, marginBottom:18 }}>NEW DONATION</div>
+        <div style={{ fontFamily:"'Bebas Neue', sans-serif", fontSize:'clamp(2.8rem,6vw,5rem)', color:T.text, lineHeight:1, marginBottom:10 }}>{donation.name}</div>
+        <div style={{ fontFamily:"'DM Mono', monospace", fontSize:'1.5rem', color:T.accent, marginBottom: donation.message ? 14 : 0 }}>{fmtDKK(donation.amountDKK)}</div>
+        {donation.message ? <div style={{ fontSize:'0.9rem', color:T.textSub, fontStyle:'italic', maxWidth:440, lineHeight:1.5 }}>"{donation.message}"</div> : null}
       </div>
     </div>
   );
@@ -288,7 +307,7 @@ function RecentItem({ donation: d, fresh }) {
 // ─── Main dashboard ───────────────────────────────────────────────────────────
 function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
   const [donations,    setDonations]    = useState([]);
-  const [celebration,  setCelebration]  = useState(null);
+  const [announcement, setAnnouncement] = useState(null);
   const [lastUpdated,  setLastUpdated]  = useState(null);
   const [spotifyQueue, setSpotifyQueue] = useState({ connected:false, currently_playing:null, is_playing:false, queue:[] });
   const [toast,        setToast]        = useState(null);
@@ -340,17 +359,29 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
     poll(); const id = setInterval(poll, 5000); return () => clearInterval(id);
   }, [mode]);
 
-  // Detect new donations and trigger toast (skip initial batch)
+  // Detect new donations — trigger toast + full-screen announcement
   useEffect(() => {
     if (donations.length === 0) return;
     if (!initializedRef.current) {
       initializedRef.current = true;
       donations.forEach(d => knownIdsRef.current.add(d.id));
+      // Seed initial #1
+      const g = {};
+      donations.forEach(d => { g[d.name] = (g[d.name] || 0) + d.amountDKK; });
+      prevTopRef.current = Object.entries(g).sort((a,b) => b[1]-a[1])[0]?.[0] || null;
       return;
     }
     const newest = donations.filter(d => !knownIdsRef.current.has(d.id));
     if (newest.length > 0) {
-      setToast(newest[newest.length - 1]);
+      const latest = newest[newest.length - 1];
+      setToast(latest);
+      // Check if new #1
+      const g = {};
+      donations.forEach(d => { g[d.name] = (g[d.name] || 0) + d.amountDKK; });
+      const newTop = Object.entries(g).sort((a,b) => b[1]-a[1])[0]?.[0] || null;
+      const isTop  = newTop !== prevTopRef.current;
+      prevTopRef.current = newTop;
+      setAnnouncement({ donation: latest, isTop });
       newest.forEach(d => knownIdsRef.current.add(d.id));
     }
   }, [donations]);
@@ -372,12 +403,6 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
   const recent        = [...donations].reverse().slice(0,6);
   const upNext        = unplayedSongs.slice(0, 3);
 
-  useEffect(() => {
-    if (!leaderboard.length) return;
-    const top = leaderboard[0];
-    if (prevTopRef.current && prevTopRef.current !== top.name) setCelebration({ name:top.name, total:top.totalDKK });
-    prevTopRef.current = top.name;
-  }, [leaderboard.map(e=>e.name).join(',')]);
 
   const timeAgo    = useTimeAgo(lastUpdated);
   const nowPlaying = mode === 'live' && spotifyQueue.connected && spotifyQueue.currently_playing ? spotifyQueue.currently_playing : null;
@@ -392,7 +417,7 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
       <div style={{ position:'fixed', inset:0, backgroundImage:'url(/bg.png)', backgroundSize:'cover', backgroundPosition:'center bottom', zIndex:0 }}/>
       <div style={{ position:'fixed', inset:0, background:'linear-gradient(180deg, rgba(8,6,3,0.35) 0%, rgba(8,6,3,0.1) 30%, rgba(8,6,3,0.1) 70%, rgba(8,6,3,0.4) 100%)', zIndex:1 }}/>
 
-      {celebration && <Celebration name={celebration.name} total={celebration.total} onDone={() => setCelebration(null)}/>}
+      {announcement && <Announcement key={announcement.donation.id} donation={announcement.donation} isTop={announcement.isTop} onDone={() => setAnnouncement(null)}/>}
       {toast && <DonationToast key={toast.id} donation={toast} onDone={() => setToast(null)}/>}
       <FullscreenButton/>
 
