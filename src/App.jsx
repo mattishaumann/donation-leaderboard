@@ -559,6 +559,32 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
           {/* Right column */}
           <div style={{ display:'flex', flexDirection:'column', gap:'1.1rem', minHeight:0, overflowY:'auto' }}>
 
+            {/* Donate */}
+            <Panel style={{ padding:'0.75rem 1.25rem 1.25rem' }}>
+              <SectionLabel>DONATE &amp; GET YOUR SONG PLAYED</SectionLabel>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.75rem' }}>
+                <div style={{ background:'white', padding:10, borderRadius:12 }}>
+                  <QRCodeSVG value={donateUrl} size={220} level="M"/>
+                </div>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontWeight:700, fontSize:'clamp(0.95rem,1.4vw,1.1rem)', color:T.text, marginBottom:4, wordBreak:'break-all' }}>
+                    {donateDisp}
+                  </div>
+                  <div style={{ fontSize:'0.75rem', color:T.textSub, marginBottom:6 }}>
+                    Scan to donate &amp; get your song played
+                  </div>
+                  <div style={{ fontSize:'0.88rem', color:T.accent, marginBottom:8, lineHeight:1.4 }}>
+                    Include a song you'd like to hear in your donation message — we'll queue it up!
+                  </div>
+                  {minDonation && (
+                    <div style={{ display:'inline-block', background:T.accentBg, border:`1px solid ${T.accentBorder}`, borderRadius:20, padding:'3px 12px', fontSize:'0.72rem', color:T.accent, letterSpacing:'0.06em' }}>
+                      min. {minDonation} DKK
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Panel>
+
             {/* Now Playing */}
             <Panel style={{ padding:'1.25rem 1.25rem 1.35rem' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1rem' }}>
@@ -595,8 +621,6 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
                 : upNext.map((d, idx) => (
                     <div key={d.id} style={{
                       display:'flex', gap:'0.7rem', alignItems:'flex-start',
-                      padding: idx > 0 ? '0.55rem 0 0' : '0',
-                      marginTop: idx > 0 ? 0 : 0,
                       borderTop: idx > 0 ? `1px solid ${T.border}` : 'none',
                       paddingTop: idx > 0 ? '0.55rem' : 0,
                     }}>
@@ -623,32 +647,6 @@ function Leaderboard({ eventName, mode, kofiUrl, minDonation }) {
                     {recent.map((d,i) => <RecentItem key={d.id} donation={d} fresh={i===0}/>)}
                   </div>
               }
-            </Panel>
-
-            {/* Donate */}
-            <Panel style={{ padding:'0.75rem 1.25rem 1.25rem' }}>
-              <SectionLabel>DONATE &amp; GET YOUR SONG PLAYED</SectionLabel>
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'0.75rem' }}>
-                <div style={{ background:'white', padding:10, borderRadius:12 }}>
-                  <QRCodeSVG value={donateUrl} size={220} level="M"/>
-                </div>
-                <div style={{ textAlign:'center' }}>
-                  <div style={{ fontWeight:700, fontSize:'clamp(0.95rem,1.4vw,1.1rem)', color:T.text, marginBottom:4, wordBreak:'break-all' }}>
-                    {donateDisp}
-                  </div>
-                  <div style={{ fontSize:'0.75rem', color:T.textSub, marginBottom:6 }}>
-                    Scan to donate &amp; get your song played
-                  </div>
-                  <div style={{ fontSize:'0.88rem', color:T.accent, marginBottom:8, lineHeight:1.4 }}>
-                    Include a song you'd like to hear in your donation message — we'll queue it up!
-                  </div>
-                  {minDonation && (
-                    <div style={{ display:'inline-block', background:T.accentBg, border:`1px solid ${T.accentBorder}`, borderRadius:20, padding:'3px 12px', fontSize:'0.72rem', color:T.accent, letterSpacing:'0.06em' }}>
-                      min. {minDonation} DKK
-                    </div>
-                  )}
-                </div>
-              </div>
             </Panel>
 
           </div>
