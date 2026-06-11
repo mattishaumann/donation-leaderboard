@@ -1,8 +1,20 @@
-# Donation Leaderboard
+# Donation Leaderboard 🎶
 
-Real-time party fundraising leaderboard for Ko-fi donations. Runs on a laptop connected to a venue screen - shows a live donor ranking, full-screen donation announcements, a Spotify song queue, and a QR code for new donors.
+### The digital jukebox that pays you to host
 
-Built for **Nørrebros** parties in Copenhagen.
+Turn any party into a digital jukebox that pays for itself. Guests scan a QR code on the big screen, drop a few kroner, and request a song - the track auto-queues on Spotify and their name climbs a live leaderboard for the whole room to see. The crowd picks the music, the energy builds, and **you, the host, keep the money**. A great evening is ahead.
+
+Built for **Nørrebros** parties in Copenhagen. Runs on any laptop wired to a venue screen.
+
+## How it works
+
+1. **Scan & pay** - guest scans the on-screen QR code and donates any amount through Ko-fi (real card payments via Stripe, paid straight out to you).
+2. **Request a song** - they write the track they want in the donation message, in any language or phrasing they like.
+3. **AI queues it** - an LLM reads the message, pulls out the song and artist, and the Spotify API drops it into the live queue instantly. "Surprise me" requests stay hidden until they play.
+4. **Climb the board** - their name and running total jump up the leaderboard. The top donor gets a golden crown and "The Legend" treatment on the big screen.
+5. **You cash in** - every donation is yours. Better music, bigger night, money in your pocket.
+
+> **Why it works:** people happily pay a little to hear their song and see their name in lights. You get a self-running music system, a leaderboard that drives friendly competition, and a fundraiser disguised as a party.
 
 ---
 
