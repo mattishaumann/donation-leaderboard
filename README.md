@@ -6,6 +6,18 @@ Built for **Nørrebros** parties in Copenhagen.
 
 ---
 
+## Screenshots
+
+**Live leaderboard** - donor ranking, song queue, now playing, and a Ko-fi QR code:
+
+![Live leaderboard](docs/leaderboard.png)
+
+**Setup screen** - name the event, set the Ko-fi link and minimum donation, pick demo or live mode:
+
+![Setup screen](docs/setup.png)
+
+---
+
 ## Features
 
 - **Live leaderboard** - donors ranked by total DKK donated, updates every 3s
