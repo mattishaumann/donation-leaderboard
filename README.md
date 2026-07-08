@@ -8,10 +8,7 @@ Guests scan a QR code on the venue screen, donate a few kroner with a song reque
 
 Built for a house party in Nørrebro, Copenhagen (motto: hats). One laptop, one TV, 60+ guests. The QR code went up and the leaderboard did the rest - as soon as someone saw another name at #1 with a golden crown, they paid to take it back. It ran for hours without anyone touching the laptop and pulled in 1000+ DKK on the night.
 
-<p>
-  <img src="docs/party-screen.jpg" alt="The leaderboard running on the venue TV" width="45%"/>
-  <img src="docs/party-kofi.jpg" alt="A guest donation landing on Ko-fi" width="45%"/>
-</p>
+<img src="docs/party.gif" alt="The leaderboard running on the venue TV during the party" width="240"/>
 
 ## How it works
 
