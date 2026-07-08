@@ -6,9 +6,12 @@ Guests scan a QR code on the venue screen, donate a few kroner with a song reque
 
 ## The story
 
-This ran live at a real party in Copenhagen ([Hat Party 2026, Nørrebro]). [~N] guests, one laptop, one venue screen. The QR code went up, the first donation landed, and the leaderboard did the rest: as soon as people saw someone else's name at #1 with a golden crown, they paid to take it back. Song requests came in as free-text donation messages - "play Dancing Queen", "🎵 Africa - Toto", "surprise me, don't show the song" - and the system parsed and queued all of them without anyone touching the laptop.
+Built for a house party in Nørrebro, Copenhagen (motto: hats). One laptop, one TV, 60+ guests. The QR code went up and the leaderboard did the rest - as soon as someone saw another name at #1 with a golden crown, they paid to take it back. It ran for hours without anyone touching the laptop and pulled in 1000+ DKK on the night.
 
-By the end of the night it had earned [X DKK]. Not a demo, not a portfolio piece that never left localhost - it ran for hours in front of a room of people who were actively trying to out-donate each other.
+<p>
+  <img src="docs/party-screen.jpg" alt="The leaderboard running on the venue TV" width="45%"/>
+  <img src="docs/party-kofi.jpg" alt="A guest donation landing on Ko-fi" width="45%"/>
+</p>
 
 ## How it works
 
@@ -56,8 +59,6 @@ Song extraction cost is close to zero: Gemini 2.0 Flash is free within quota, th
 **Setup screen** - event name, payment link, minimum donation, demo or live mode:
 
 ![Setup screen](docs/setup.png)
-
-<!-- PLACEHOLDER: add 1-2 photos from the actual party night (screen in the room, guests scanning) -->
 
 ## Run it yourself
 
