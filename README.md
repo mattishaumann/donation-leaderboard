@@ -1,100 +1,69 @@
-# Donation Leaderboard 🎶
+# Digital Jukebox
 
-### The digital jukebox that pays you to host
+A party jukebox where guests pay to queue songs - and the live leaderboard shows who is bankrolling the playlist.
 
-Turn any party into a digital jukebox that pays for itself. Guests scan a QR code on the big screen, drop a few kroner, and request a song - the track auto-queues on Spotify and their name climbs a live leaderboard for the whole room to see. The crowd picks the music, the energy builds, and **you, the host, keep the money**. A great evening is ahead.
+Guests scan a QR code on the venue screen, donate a few kroner with a song request in the message, and an LLM reads the request and drops the track straight into the Spotify queue. Their name climbs the leaderboard for the whole room to see. The host keeps the money.
 
-Built for **Nørrebros** parties in Copenhagen. Runs on any laptop wired to a venue screen.
+## The story
+
+This ran live at a real party in Copenhagen ([Hat Party 2026, Nørrebro]). [~N] guests, one laptop, one venue screen. The QR code went up, the first donation landed, and the leaderboard did the rest: as soon as people saw someone else's name at #1 with a golden crown, they paid to take it back. Song requests came in as free-text donation messages - "play Dancing Queen", "🎵 Africa - Toto", "surprise me, don't show the song" - and the system parsed and queued all of them without anyone touching the laptop.
+
+By the end of the night it had earned [X DKK]. Not a demo, not a portfolio piece that never left localhost - it ran for hours in front of a room of people who were actively trying to out-donate each other.
 
 ## How it works
 
-1. **Scan & pay** - guest scans the on-screen QR code and donates any amount through Ko-fi (real card payments via Stripe, paid straight out to you).
-2. **Request a song** - they write the track they want in the donation message, in any language or phrasing they like.
-3. **AI queues it** - an LLM reads the message, pulls out the song and artist, and the Spotify API drops it into the live queue instantly. "Surprise me" requests stay hidden until they play.
-4. **Climb the board** - their name and running total jump up the leaderboard. The top donor gets a golden crown and "The Legend" treatment on the big screen.
-5. **You cash in** - every donation is yours. Better music, bigger night, money in your pocket.
-
-> **Why it works:** people happily pay a little to hear their song and see their name in lights. You get a self-running music system, a leaderboard that drives friendly competition, and a fundraiser disguised as a party.
-
----
-
-## Screenshots
-
-**Live leaderboard** - donor ranking, song queue, now playing, and a Ko-fi QR code:
-
-![Live leaderboard](docs/leaderboard.png)
-
-**Setup screen** - name the event, set the Ko-fi link and minimum donation, pick demo or live mode:
-
-![Setup screen](docs/setup.png)
-
----
-
-## Features
-
-- **Live leaderboard** - donors ranked by total DKK donated, updates every 3s
-- **Full-screen donation announcements** - every new donation gets a full-screen overlay (fade in, hold, fade out). New #1 donor gets a special "The Legend" treatment. Multiple donations queue up and play one by one
-- **Podium styling** - #1 gets a golden crown + "The Legend" label + glow; #2 silver border; #3 bronze border
-- **Ko-fi webhook** - receives donations instantly via POST webhook
-- **AI song extraction** - Gemini 2.0 Flash (with GPT-4o-mini fallback) reads donation messages and extracts song + artist in any phrasing
-- **Spotify auto-queue** - extracted songs are searched and added to the Spotify playback queue automatically
-- **Mystery songs** - if a donor writes "don't show the song", "surprise", "skjult" etc., the song is queued on Spotify but hidden as "mystery song" everywhere until it starts playing - then it's revealed in Now Playing
-- **Up Next panel** - shows the next 3 donor-requested songs waiting in the queue
-- **Now Playing** - shows the current track with album art; auto-detects when a donated song starts and marks it as played
-- **Toast notifications** - small slide-in toast bottom-left for each new donation
-- **QR code** - scannable Ko-fi link with minimum donation amount
-- **Multi-currency** - DKK, EUR, USD, GBP, SEK, NOK all converted to DKK for ranking
-- **Demo mode** - realistic Danish/English donation presets with song requests, occasional double donations, 16s interval
-- **Fullscreen button** - fixed top-right toggle for presentation mode
-
----
-
-## Layout
-
 ```
-[ Banner — party context text ]
-[ Header — event name | donors | queued pills | LIVE indicator ]
-
-[ Leaderboard (left, ~55%) ]  [ Right column (~45%) ]
-                               ├─ Donate (QR code)
-                               ├─ Now Playing
-                               ├─ Up Next (3 songs)
-                               └─ Recent Donations
+guest phone                 laptop (this app)                    big screen
+    │                            │                                   │
+    │  scan QR → pay on Ko-fi    │                                   │
+    ├───────────────────────────►│                                   │
+    │                            │  Ko-fi webhook → POST /webhook/kofi
+    │                            │  LLM extracts song from message   │
+    │                            │  (Gemini 2.0 Flash, GPT-4o-mini   │
+    │                            │   fallback)                       │
+    │                            │  Spotify API queues the track     │
+    │                            ├──────────────────────────────────►│
+    │                            │   leaderboard + announcement      │
 ```
 
----
+1. **Pay** - guest scans the on-screen QR code and donates through Ko-fi, writing their song wish in the donation message.
+2. **Parse** - the webhook fires, and an LLM extracts song + artist from whatever phrasing the guest used, in any language. "Surprise me" requests get flagged as hidden.
+3. **Queue** - the track is searched on the Spotify Web API and added to the live playback queue. Hidden songs show as "mystery song" until they start playing.
+4. **Compete** - every donation triggers a full-screen announcement; a new #1 gets "The Legend" treatment. Donors are ranked by running total in DKK (multi-currency, converted).
+5. **Detect** - a poller watches Spotify's now-playing and auto-marks requested songs as played when they come on.
+
+Everything is in-memory - no database. One `DELETE /api/donations` resets the night.
 
 ## Stack
 
 | Layer | Tech |
 |---|---|
-| Frontend | React 18, Vite 5, inline styles |
+| Frontend | React 18, Vite 5 |
 | Backend | Node.js (ESM), Express 4 |
-| Fonts | Bebas Neue, Space Grotesk, DM Mono (Google Fonts) |
-| QR | `qrcode.react` |
-| AI | Gemini 2.0 Flash + GPT-4o-mini fallback |
-| Donations | Ko-fi webhook |
-| Music | Spotify Web API (OAuth, queue, now-playing) |
+| Payments | Ko-fi webhook (multi-currency: DKK, EUR, USD, GBP, SEK, NOK) |
+| Song extraction | Gemini 2.0 Flash, GPT-4o-mini fallback |
+| Music | Spotify Web API (OAuth, search, queue, now-playing) |
+| QR | qrcode.react |
 
----
+Song extraction cost is close to zero: Gemini 2.0 Flash is free within quota, the GPT-4o-mini fallback is ~$0.003 per 100 donations.
 
-## Environment Variables
+## Screenshots
 
-```env
-KOFI_TOKEN=            # Ko-fi webhook verification token (optional but recommended)
-GEMINI_API_KEY=        # Google AI Studio key - tried first
-OPENAI_API_KEY=        # OpenAI key - fallback for song extraction (GPT-4o-mini)
-SPOTIFY_CLIENT_ID=     # From developer.spotify.com
-SPOTIFY_CLIENT_SECRET=
-```
+**Live leaderboard** - donor ranking, now playing, up next, and the QR panel (shown in demo mode):
 
----
+![Live leaderboard](docs/leaderboard.png)
 
-## Setup
+**Setup screen** - event name, payment link, minimum donation, demo or live mode:
+
+![Setup screen](docs/setup.png)
+
+<!-- PLACEHOLDER: add 1-2 photos from the actual party night (screen in the room, guests scanning) -->
+
+## Run it yourself
 
 ```bash
 npm install
-# copy .env.example to .env and fill in keys
+cp .env.example .env   # fill in your keys
 npm run dev
 ```
 
@@ -102,66 +71,28 @@ npm run dev
 - Backend: http://localhost:3000
 - Spotify auth: http://localhost:3000/auth/spotify
 
----
+```env
+KOFI_TOKEN=             # Ko-fi webhook verification token
+GEMINI_API_KEY=         # tried first for song extraction
+OPENAI_API_KEY=         # GPT-4o-mini fallback
+SPOTIFY_CLIENT_ID=      # from developer.spotify.com
+SPOTIFY_CLIENT_SECRET=
+```
 
-## Ko-fi Webhook
+**Ko-fi webhook**: expose port 3000 with ngrok, set `https://<your-ngrok-url>/webhook/kofi` at [ko-fi.com/manage/webhooks](https://ko-fi.com/manage/webhooks), copy the verification token into `.env`.
 
-1. `brew install ngrok/ngrok/ngrok` then `ngrok http 3000`
-2. Go to [ko-fi.com/manage/webhooks](https://ko-fi.com/manage/webhooks)
-3. Set webhook URL to: `https://your-ngrok-url/webhook/kofi`
-4. Copy the verification token into `KOFI_TOKEN` in `.env`
+**Spotify**: create an app at [developer.spotify.com](https://developer.spotify.com/dashboard) with redirect URI `http://127.0.0.1:3000/auth/spotify/callback`, then log in once via `/auth/spotify`. Spotify needs an active playback device, and tokens live in memory - re-auth after a server restart.
 
----
+**Demo mode** needs no keys at all: it generates realistic donations with song requests so you can see the whole thing move before wiring up payments.
 
-## Spotify Setup
-
-1. Go to [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)
-2. Create an app - set redirect URI to `http://127.0.0.1:3000/auth/spotify/callback`
-3. Copy Client ID and Secret into `.env`
-4. Start the server, open `http://localhost:3000/auth/spotify` and log in
-
-Spotify must have an active playback device (phone, desktop app, etc.) for queuing to work. Tokens are in-memory - re-auth required after server restart.
-
----
-
-## Song Request Formats
-
-The AI handles any natural phrasing:
-
-| Donor writes | Extracted |
-|---|---|
-| `play Dancing Queen by ABBA` | Dancing Queen - ABBA |
-| `can you put on Mr. Brightside?` | Mr. Brightside |
-| `🎵 Africa - Toto` | Africa - Toto |
-| `surprise me, don't show the song` | *(queued as mystery)* |
-| `fedt arrangement tak!` | *(no song)* |
-
----
-
-## API Endpoints
+## API
 
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/webhook/kofi` | Ko-fi donation webhook |
 | `GET` | `/api/donations` | All donations |
 | `POST` | `/api/donations/:id/played` | Mark a song as played |
-| `DELETE` | `/api/donations` | Clear all donations |
-| `GET` | `/api/spotify/status` | `{ connected: bool }` |
-| `GET` | `/api/spotify/queue` | Currently playing + next 15 tracks |
+| `DELETE` | `/api/donations` | Clear the night |
+| `GET` | `/api/spotify/status` | Connection status |
+| `GET` | `/api/spotify/queue` | Now playing + next tracks |
 | `GET` | `/auth/spotify` | Start Spotify OAuth |
-| `GET` | `/auth/spotify/callback` | OAuth callback |
-
----
-
-## Production
-
-```bash
-npm run build
-npm start   # serves built frontend from Express on port 3000
-```
-
----
-
-## Cost
-
-Gemini 2.0 Flash is free within quota. GPT-4o-mini fallback costs ~$0.003 per 100 donations.
